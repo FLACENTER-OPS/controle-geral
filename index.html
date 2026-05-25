@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Controle Geral — Florida Auto Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0d12;--surface:#111520;--card:#161c2a;--border:#1e2840;
+    --border-active:#2e4a8a;--blue:#2563eb;--blue-light:#3b82f6;
+    --blue-glow:rgba(37,99,235,0.15);--green:#10b981;--green-glow:rgba(16,185,129,0.12);
+    --red:#ef4444;--red-glow:rgba(239,68,68,0.12);--amber:#f59e0b;
+    --amber-glow:rgba(245,158,11,0.12);--text:#e2e8f0;--text-muted:#64748b;
+    --text-dim:#94a3b8;--radius:10px;--radius-sm:6px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+
+  /* HEADER */
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:200;backdrop-filter:blur(12px);}
+  .header-inner{max-width:100%;display:flex;align-items:center;gap:12px;}
+  .header-logo{width:30px;height:30px;background:var(--green);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0a0d12;flex-shrink:0;}
+  .header-title{font-size:14px;font-weight:600;}
+  .header-sub{font-size:10px;color:var(--text-muted);font-family:'DM Mono',monospace;margin-top:1px;}
+  .header-stats{margin-left:auto;display:flex;gap:12px;align-items:center;}
+  .stat-chip{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text-muted);}
+  .stat-chip.green{border-color:rgba(16,185,129,0.3);color:var(--green);background:var(--green-glow);}
+  .stat-chip.amber{border-color:rgba(245,158,11,0.3);color:var(--amber);background:var(--amber-glow);}
+
+  /* TOOLBAR */
+  .toolbar{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;}
+  .btn-add{padding:8px 14px;background:var(--blue);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
+  .btn-add:hover{background:var(--blue-light);}
+  .filter-btn{padding:7px 12px;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer;white-space:nowrap;transition:all 0.15s;}
+  .filter-btn:hover,.filter-btn.active{border-color:var(--blue);color:var(--blue-light);}
+  .search-input{padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:180px;}
+  .search-input:focus{border-color:var(--blue);}
+  .search-input::placeholder{color:var(--text-muted);}
+
+  /* TABLE WRAPPER */
+  .table-wrap{overflow-x:auto;padding:16px 20px;}
+
+  /* TABLE */
+  table{border-collapse:collapse;width:100%;min-width:1200px;}
+  thead tr{background:var(--card);border-bottom:2px solid var(--border);}
+  th{padding:10px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap;border-right:1px solid var(--border);}
+  th:last-child{border-right:none;}
+  th.center{text-align:center;}
+
+  tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
+  tbody tr:hover{background:rgba(255,255,255,0.02);}
+  td{padding:10px 12px;font-size:12px;color:var(--text);vertical-align:middle;border-right:1px solid var(--border);white-space:nowrap;}
+  td:last-child{border-right:none;}
+  td.center{text-align:center;}
+  td.muted{color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px;}
+
+  /* TOGGLE CHECK */
+  .toggle-wrap{display:flex;align-items:center;justify-content:center;}
+  .toggle{width:28px;height:28px;border-radius:6px;border:1.5px solid var(--border-active);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.15s;flex-shrink:0;}
+  .toggle:hover{border-color:var(--green);background:var(--green-glow);}
+  .toggle.on{background:var(--green);border-color:var(--green);color:white;}
+  .toggle.on::after{content:'✓';font-size:13px;font-weight:700;color:white;}
+  .toggle:not(.on)::after{content:'';}
+
+  /* GPS SELECT */
+  .gps-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:110px;}
+  .gps-select:focus{border-color:var(--blue);}
+  .gps-select option{background:var(--card);}
+
+  /* PG COMISSÃO */
+  .pg-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:110px;}
+  .pg-select.pago{border-color:var(--green);color:var(--green);background:var(--green-glow);}
+  .pg-select.pendente{border-color:var(--amber);color:var(--amber);}
+
+  /* DEAL ID */
+  .deal-id{font-family:'DM Mono',monospace;font-size:12px;color:var(--blue-light);font-weight:500;}
+  .deal-veiculo{font-size:12px;font-weight:500;}
+  .deal-vendedor{font-size:11px;color:var(--text-muted);}
+
+  /* EMPTY */
+  .empty-row td{text-align:center;padding:48px;color:var(--text-muted);font-size:14px;}
+
+  /* MODAL */
+  .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s ease;}
+  .modal-overlay.hidden{display:none;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px 40px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;animation:slideUp 0.25s ease;}
+  @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+  .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
+  .modal-sub{font-size:12px;color:var(--text-muted);margin-bottom:20px;}
+  .modal-close{float:right;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;margin-top:-4px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-field{display:flex;flex-direction:column;gap:4px;}
+  .form-field.full{grid-column:1/-1;}
+  .form-label{font-size:11px;color:var(--text-muted);font-weight:500;}
+  .form-input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 11px;outline:none;}
+  .form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow);}
+  .form-select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 11px;outline:none;-webkit-appearance:none;}
+  .form-select:focus{border-color:var(--blue);}
+  .btn-save{width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;transition:all 0.2s;}
+  .btn-save:hover{opacity:0.9;}
+
+  /* TOAST */
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;z-index:400;display:none;animation:fadeIn 0.2s ease;}
+  .toast.show{display:block;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-logo">FA</div>
+    <div>
+      <div class="header-title">Controle Geral de Vendas</div>
+      <div class="header-sub">Florida Auto Center · Giovanna</div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-chip green" id="stat-aprovados">0 aprovados</div>
+      <div class="stat-chip amber" id="stat-pendentes">0 pendentes</div>
+      <div class="stat-chip" id="stat-total">0 total</div>
+    </div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <button class="btn-add" onclick="openModal()">+ Novo Deal</button>
+  <input class="search-input" type="text" placeholder="🔍 Buscar deal, VIN, vendedor…" oninput="filterDeals(this.value)">
+  <button class="filter-btn active" onclick="setFilter('todos', this)">Todos</button>
+  <button class="filter-btn" onclick="setFilter('pendentes', this)">Pendentes</button>
+  <button class="filter-btn" onclick="setFilter('aprovados', this)">Aprovados</button>
+  <button class="filter-btn" onclick="setFilter('sem-pg', this)">Comissão pendente</button>
+</div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Deal</th>
+        <th>Veículo / Vendedor</th>
+        <th class="center">Folha de Rosto</th>
+        <th class="center">Comissão DC</th>
+        <th class="center">Comissão Planilha</th>
+        <th class="center">Sold/Funded</th>
+        <th class="center">Baixa DP</th>
+        <th class="center">Baixa Netcheck</th>
+        <th class="center">OMNIA</th>
+        <th class="center">GPS</th>
+        <th class="center">DMV Doc</th>
+        <th class="center">Envelope</th>
+        <th class="center">Pasta Suspensa</th>
+        <th class="center">Pg Comissão</th>
+        <th class="center">Ações</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody">
+      <tr class="empty-row"><td colspan="16">Carregando deals…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- MODAL NOVO DEAL -->
+<div class="modal-overlay hidden" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modalTitle">Novo Deal</div>
+    <div class="modal-sub">Preencha os dados para adicionar ao controle</div>
+    <div class="form-grid">
+      <div class="form-field">
+        <label class="form-label">Data da venda</label>
+        <input class="form-input" type="date" id="f-data">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Deal ID</label>
+        <input class="form-input" type="text" id="f-deal" placeholder="Ex: 3891">
+      </div>
+      <div class="form-field">
+        <label class="form-label">VIN</label>
+        <input class="form-input" type="text" id="f-vin" placeholder="Últimos 6 ou completo" style="text-transform:uppercase">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Veículo</label>
+        <input class="form-input" type="text" id="f-veiculo" placeholder="Ex: 2020 KIA OPTIMA">
+      </div>
+      <div class="form-field">
+        <label class="form-label">Vendedor</label>
+        <select class="form-select" id="f-vendedor">
+          <option value="">Selecione…</option>
+          <option>Alexandre Z.</option>
+          <option>Lovendy</option>
+          <option>Luigi T.</option>
+          <option>Giovanna/Guilherme</option>
+          <option>Antonio</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label class="form-label">GPS</label>
+        <select class="form-select" id="f-gps">
+          <option value="nao">Não tem</option>
+          <option value="financeira">Financeira</option>
+          <option value="flacenter">FlaCenter (parcelamento)</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-save" onclick="saveDeal()">Salvar deal →</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ Salvo!</div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKONEy9LywAzjGqmtmdUDodSDK7oLySpAIRjoi6KpG6txCb-VT9T6zYJ-Zgx4IcUda/exec';
+
+let allDeals = [];
+let currentFilter = 'todos';
+let searchTerm = '';
+let editingId = null;
+
+// ---- API ----
+async function loadFromSheets(){
+  document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Carregando…</td></tr>';
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const data = await res.json();
+    if(data.success){
+      allDeals = (data.deals||[]).map(d=>({
+        ...d,
+        folhaRosto:      d.folhaRosto==='true'||d.folhaRosto===true,
+        comissaoDC:      d.comissaoDC==='true'||d.comissaoDC===true,
+        comissaoPlanilha:d.comissaoPlanilha==='true'||d.comissaoPlanilha===true,
+        soldFunded:      d.soldFunded==='true'||d.soldFunded===true,
+        baixaDP:         d.baixaDP==='true'||d.baixaDP===true,
+        baixaNetcheck:   d.baixaNetcheck==='true'||d.baixaNetcheck===true,
+        omnia:           d.omnia==='true'||d.omnia===true,
+        dmvDoc:          d.dmvDoc==='true'||d.dmvDoc===true,
+        envelope:        d.envelope==='true'||d.envelope===true,
+        pastaSuspensa:   d.pastaSuspensa==='true'||d.pastaSuspensa===true,
+      }));
+      renderTable();
+    }
+  } catch(e){
+    document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Erro ao carregar. Verifique a conexão.</td></tr>';
+  }
+}
+
+async function saveToSheets(deal){
+  try {
+    await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify({action:'save',...deal}) });
+  } catch(e){ console.warn('Sheets save error:',e); }
+}
+
+const COLS = ['folhaRosto','comissaoDC','comissaoPlanilha','soldFunded','baixaDP','baixaNetcheck','omnia','dmvDoc','envelope','pastaSuspensa'];
+
+function emptyDeal(data={}){
+  return {
+    id: data.id || Date.now().toString(),
+    data: data.data || '',
+    dealId: data.dealId || '',
+    vin: data.vin || '',
+    veiculo: data.veiculo || '',
+    vendedor: data.vendedor || '',
+    gps: data.gps || 'nao',
+    pgComissao: data.pgComissao || 'pendente',
+    ...Object.fromEntries(COLS.map(c => [c, data[c] || false])),
+  };
+}
+
+// ---- RENDER ----
+function gpsLabel(v){
+  if(v==='financeira') return '<span style="font-size:10px;color:var(--text-muted)">Financeira</span>';
+  if(v==='flacenter') return '<span style="font-size:10px;color:var(--amber)">FlaCenter</span>';
+  return '<span style="font-size:10px;color:var(--text-muted)">—</span>';
+}
+
+function renderRow(deal){
+  const tr = document.createElement('tr');
+  tr.dataset.id = deal.id;
+
+  const allOk = COLS.every(c => c === 'baixaNetcheck' ? true : deal[c]); // netcheck optional
+  const pgClass = deal.pgComissao === 'pago' ? 'pago' : 'pendente';
+
+  tr.innerHTML = `
+    <td class="muted">${deal.data ? new Date(deal.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—'}</td>
+    <td><div class="deal-id">${deal.dealId || '—'}</div></td>
+    <td>
+      <div class="deal-veiculo">${deal.veiculo || '—'}</div>
+      <div class="deal-vendedor">${deal.vendedor || '—'}</div>
+    </td>
+    ${COLS.slice(0,9).map(col => `
+      <td class="center">
+        <div class="toggle-wrap">
+          <div class="toggle ${deal[col]?'on':''}" onclick="toggleCol('${deal.id}','${col}',this)"></div>
+        </div>
+      </td>
+    `).join('')}
+    <td class="center">${gpsLabel(deal.gps)}</td>
+    <td class="center">
+      <div class="toggle-wrap">
+        <div class="toggle ${deal['dmvDoc']?'on':''}" onclick="toggleCol('${deal.id}','dmvDoc',this)"></div>
+      </div>
+    </td>
+    <td class="center">
+      <div class="toggle-wrap">
+        <div class="toggle ${deal['envelope']?'on':''}" onclick="toggleCol('${deal.id}','envelope',this)"></div>
+      </div>
+    </td>
+    <td class="center">
+      <div class="toggle-wrap">
+        <div class="toggle ${deal['pastaSuspensa']?'on':''}" onclick="toggleCol('${deal.id}','pastaSuspensa',this)"></div>
+      </div>
+    </td>
+    <td class="center">
+      <select class="pg-select ${pgClass}" onchange="setPgComissao('${deal.id}',this)">
+        <option value="pendente" ${deal.pgComissao==='pendente'?'selected':''}>Pendente</option>
+        <option value="pago" ${deal.pgComissao==='pago'?'selected':''}>✓ Pago</option>
+        <option value="bloqueado" ${deal.pgComissao==='bloqueado'?'selected':''}>✗ Bloqueado</option>
+      </select>
+    </td>
+    <td class="center">
+      <button onclick="editDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Editar">✏️</button>
+      <button onclick="deleteDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Excluir">🗑️</button>
+    </td>
+  `;
+  return tr;
+}
+
+function renderTable(){
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+
+  let filtered = allDeals.filter(d => {
+    const matchSearch = !searchTerm ||
+      d.dealId?.toLowerCase().includes(searchTerm) ||
+      d.vin?.toLowerCase().includes(searchTerm) ||
+      d.veiculo?.toLowerCase().includes(searchTerm) ||
+      d.vendedor?.toLowerCase().includes(searchTerm);
+
+    const allToggled = COLS.filter(c=>c!=='baixaNetcheck').every(c=>d[c]);
+    const matchFilter =
+      currentFilter === 'todos' ? true :
+      currentFilter === 'pendentes' ? !allToggled :
+      currentFilter === 'aprovados' ? allToggled :
+      currentFilter === 'sem-pg' ? d.pgComissao !== 'pago' : true;
+
+    return matchSearch && matchFilter;
+  });
+
+  if(filtered.length === 0){
+    const tr = document.createElement('tr');
+    tr.className = 'empty-row';
+    tr.innerHTML = `<td colspan="16">${allDeals.length === 0 ? 'Nenhum deal cadastrado. Clique em "+ Novo Deal" para começar.' : 'Nenhum deal encontrado.'}</td>`;
+    body.appendChild(tr);
+  } else {
+    filtered.forEach(d => body.appendChild(renderRow(d)));
+  }
+
+  updateStats();
+}
+
+function updateStats(){
+  const total = allDeals.length;
+  const aprovados = allDeals.filter(d => COLS.filter(c=>c!=='baixaNetcheck').every(c=>d[c])).length;
+  const pendentes = total - aprovados;
+  document.getElementById('stat-total').textContent = total + ' total';
+  document.getElementById('stat-aprovados').textContent = aprovados + ' completos';
+  document.getElementById('stat-pendentes').textContent = pendentes + ' pendentes';
+}
+
+// ---- TOGGLE ----
+function toggleCol(id, col, el){
+  const deal = allDeals.find(d=>d.id===id);
+  if(!deal) return;
+  deal[col] = !deal[col];
+  el.classList.toggle('on', deal[col]);
+  saveToSheets(deal);
+  updateStats();
+  showToast();
+}
+
+function setPgComissao(id, sel){
+  const deal = allDeals.find(d=>d.id===id);
+  if(!deal) return;
+  deal.pgComissao = sel.value;
+  sel.className = `pg-select ${sel.value}`;
+  saveToSheets(deal);
+  showToast();
+}
+
+// ---- FILTER / SEARCH ----
+function setFilter(f, btn){
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+function filterDeals(val){
+  searchTerm = val.toLowerCase().trim();
+  renderTable();
+}
+
+// ---- MODAL ----
+function openModal(prefill={}){
+  editingId = prefill.id || null;
+  document.getElementById('modalTitle').textContent = editingId ? 'Editar Deal' : 'Novo Deal';
+  document.getElementById('f-data').value = prefill.data || new Date().toISOString().split('T')[0];
+  document.getElementById('f-deal').value = prefill.dealId || '';
+  document.getElementById('f-vin').value = prefill.vin || '';
+  document.getElementById('f-veiculo').value = prefill.veiculo || '';
+  document.getElementById('f-vendedor').value = prefill.vendedor || '';
+  document.getElementById('f-gps').value = prefill.gps || 'nao';
+  document.getElementById('modalOverlay').classList.remove('hidden');
+}
+
+function editDeal(id){
+  const deal = allDeals.find(d=>d.id===id);
+  if(deal) openModal(deal);
+}
+
+function closeModal(){ document.getElementById('modalOverlay').classList.add('hidden'); editingId=null; }
+function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+function saveDeal(){
+  const dealId = document.getElementById('f-deal').value.trim();
+  const veiculo = document.getElementById('f-veiculo').value.trim();
+  if(!dealId || !veiculo){ alert('Deal ID e Veículo são obrigatórios.'); return; }
+
+  if(editingId){
+    const idx = allDeals.findIndex(d=>d.id===editingId);
+    if(idx!==-1){
+      allDeals[idx] = {
+        ...allDeals[idx],
+        data: document.getElementById('f-data').value,
+        dealId,
+        vin: document.getElementById('f-vin').value.trim().toUpperCase(),
+        veiculo,
+        vendedor: document.getElementById('f-vendedor').value,
+        gps: document.getElementById('f-gps').value,
+      };
+    }
+  } else {
+    allDeals.unshift(emptyDeal({
+      data: document.getElementById('f-data').value,
+      dealId,
+      vin: document.getElementById('f-vin').value.trim().toUpperCase(),
+      veiculo,
+      vendedor: document.getElementById('f-vendedor').value,
+      gps: document.getElementById('f-gps').value,
+    }));
+  }
+
+  const savedDeal = editingId ? allDeals[allDeals.findIndex(d=>d.id===editingId)] : allDeals[0];
+  saveToSheets(savedDeal);
+  closeModal();
+  renderTable();
+  showToast(editingId ? 'Atualizado!' : 'Deal adicionado!');
+}
+
+function deleteDeal(id){
+  if(!confirm('Excluir este deal do controle?')) return;
+  allDeals = allDeals.filter(d=>d.id!==id);
+  renderTable();
+}
+
+// ---- TOAST ----
+function showToast(msg='✓ Salvo!'){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// ---- INIT ----
+loadFromSheets();
+</script>
+</body>
+</html>
