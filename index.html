@@ -17,8 +17,6 @@
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
-
-  /* HEADER */
   .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px;position:sticky;top:0;z-index:200;backdrop-filter:blur(12px);}
   .header-inner{max-width:100%;display:flex;align-items:center;gap:12px;}
   .header-logo{width:30px;height:30px;background:var(--green);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#0a0d12;flex-shrink:0;}
@@ -28,8 +26,7 @@
   .stat-chip{font-size:10px;font-family:'DM Mono',monospace;padding:3px 8px;border-radius:20px;border:1px solid var(--border);color:var(--text-muted);}
   .stat-chip.green{border-color:rgba(16,185,129,0.3);color:var(--green);background:var(--green-glow);}
   .stat-chip.amber{border-color:rgba(245,158,11,0.3);color:var(--amber);background:var(--amber-glow);}
-
-  /* TOOLBAR */
+  .stat-chip.red{border-color:rgba(239,68,68,0.3);color:var(--red);background:var(--red-glow);}
   .toolbar{padding:12px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto;}
   .btn-add{padding:8px 14px;background:var(--blue);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
   .btn-add:hover{background:var(--blue-light);}
@@ -38,51 +35,29 @@
   .search-input{padding:7px 12px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:180px;}
   .search-input:focus{border-color:var(--blue);}
   .search-input::placeholder{color:var(--text-muted);}
-
-  /* TABLE WRAPPER */
   .table-wrap{overflow-x:auto;padding:16px 20px;}
-
-  /* TABLE */
-  table{border-collapse:collapse;width:100%;min-width:1200px;}
+  table{border-collapse:collapse;width:100%;min-width:1280px;}
   thead tr{background:var(--card);border-bottom:2px solid var(--border);}
   th{padding:10px 12px;text-align:left;font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;white-space:nowrap;border-right:1px solid var(--border);}
   th:last-child{border-right:none;}
   th.center{text-align:center;}
-
   tbody tr{border-bottom:1px solid var(--border);transition:background 0.1s;}
   tbody tr:hover{background:rgba(255,255,255,0.02);}
   td{padding:10px 12px;font-size:12px;color:var(--text);vertical-align:middle;border-right:1px solid var(--border);white-space:nowrap;}
   td:last-child{border-right:none;}
   td.center{text-align:center;}
   td.muted{color:var(--text-muted);font-family:'DM Mono',monospace;font-size:11px;}
-
-  /* TOGGLE CHECK */
-  .toggle-wrap{display:flex;align-items:center;justify-content:center;}
-  .toggle{width:28px;height:28px;border-radius:6px;border:1.5px solid var(--border-active);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;transition:all 0.15s;flex-shrink:0;}
-  .toggle:hover{border-color:var(--green);background:var(--green-glow);}
-  .toggle.on{background:var(--green);border-color:var(--green);color:white;}
-  .toggle.on::after{content:'✓';font-size:13px;font-weight:700;color:white;}
-  .toggle:not(.on)::after{content:'';}
-
-  /* GPS SELECT */
-  .gps-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:110px;}
-  .gps-select:focus{border-color:var(--blue);}
-  .gps-select option{background:var(--card);}
-
-  /* PG COMISSÃO */
-  .pg-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:110px;}
-  .pg-select.pago{border-color:var(--green);color:var(--green);background:var(--green-glow);}
-  .pg-select.pendente{border-color:var(--amber);color:var(--amber);}
-
-  /* DEAL ID */
   .deal-id{font-family:'DM Mono',monospace;font-size:12px;color:var(--blue-light);font-weight:500;}
   .deal-veiculo{font-size:12px;font-weight:500;}
   .deal-vendedor{font-size:11px;color:var(--text-muted);}
-
-  /* EMPTY */
+  .status-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:120px;}
+  .status-select.pending{border-color:rgba(245,158,11,0.45);color:var(--amber);background:var(--amber-glow);}
+  .status-select.approved,.status-select.completed,.status-select.paid,.status-select.sent,.status-select.created,.status-select.done{border-color:rgba(16,185,129,0.45);color:var(--green);background:var(--green-glow);}
+  .status-select.blocked,.status-select.rejected,.status-select.critical{border-color:rgba(239,68,68,0.45);color:var(--red);background:var(--red-glow);}
+  .alert-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);}
+  .alert-badge.has-alerts{border-color:rgba(245,158,11,0.35);background:var(--amber-glow);color:var(--amber);}
+  .alert-badge.critical{border-color:rgba(239,68,68,0.45);background:var(--red-glow);color:var(--red);}
   .empty-row td{text-align:center;padding:48px;color:var(--text-muted);font-size:14px;}
-
-  /* MODAL */
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s ease;}
   .modal-overlay.hidden{display:none;}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px 40px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;animation:slideUp 0.25s ease;}
@@ -93,32 +68,27 @@
   .modal-close{float:right;background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;margin-top:-4px;}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   .form-field{display:flex;flex-direction:column;gap:4px;}
-  .form-field.full{grid-column:1/-1;}
   .form-label{font-size:11px;color:var(--text-muted);font-weight:500;}
-  .form-input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 11px;outline:none;}
-  .form-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow);}
-  .form-select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 11px;outline:none;-webkit-appearance:none;}
-  .form-select:focus{border-color:var(--blue);}
+  .form-input,.form-select{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:9px 11px;outline:none;}
+  .form-input:focus,.form-select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-glow);}
   .btn-save{width:100%;padding:14px;background:var(--green);color:white;border:none;border-radius:var(--radius);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;margin-top:16px;transition:all 0.2s;}
   .btn-save:hover{opacity:0.9;}
-
-  /* TOAST */
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;z-index:400;display:none;animation:fadeIn 0.2s ease;}
   .toast.show{display:block;}
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="header-inner">
     <div class="header-logo">FA</div>
     <div>
       <div class="header-title">Controle Geral de Vendas</div>
-      <div class="header-sub">Florida Auto Center · Giovanna</div>
+      <div class="header-sub">Florida Auto Center · DEAL_MASTER</div>
     </div>
     <div class="header-stats">
-      <div class="stat-chip green" id="stat-aprovados">0 aprovados</div>
+      <div class="stat-chip green" id="stat-aprovados">0 completos</div>
       <div class="stat-chip amber" id="stat-pendentes">0 pendentes</div>
+      <div class="stat-chip red" id="stat-alertas">0 críticos</div>
       <div class="stat-chip" id="stat-total">0 total</div>
     </div>
   </div>
@@ -129,8 +99,9 @@
   <input class="search-input" type="text" placeholder="🔍 Buscar deal, VIN, vendedor…" oninput="filterDeals(this.value)">
   <button class="filter-btn active" onclick="setFilter('todos', this)">Todos</button>
   <button class="filter-btn" onclick="setFilter('pendentes', this)">Pendentes</button>
-  <button class="filter-btn" onclick="setFilter('aprovados', this)">Aprovados</button>
+  <button class="filter-btn" onclick="setFilter('aprovados', this)">Completos</button>
   <button class="filter-btn" onclick="setFilter('sem-pg', this)">Comissão pendente</button>
+  <button class="filter-btn" onclick="setFilter('alertas', this)">Com alertas</button>
 </div>
 
 <div class="table-wrap">
@@ -140,18 +111,18 @@
         <th>Data</th>
         <th>Deal</th>
         <th>Veículo / Vendedor</th>
-        <th class="center">Folha de Rosto</th>
-        <th class="center">Comissão DC</th>
-        <th class="center">Comissão Planilha</th>
-        <th class="center">Sold/Funded</th>
-        <th class="center">Baixa DP</th>
-        <th class="center">Baixa Netcheck</th>
+        <th class="center">Review</th>
+        <th class="center">Comissão</th>
+        <th class="center">DMV</th>
+        <th class="center">Parcelamento</th>
+        <th class="center">Title</th>
         <th class="center">OMNIA</th>
-        <th class="center">GPS</th>
-        <th class="center">DMV Doc</th>
+        <th class="center">Folder</th>
         <th class="center">Envelope</th>
-        <th class="center">Pasta Suspensa</th>
-        <th class="center">Pg Comissão</th>
+        <th class="center">Alertas</th>
+        <th class="center">Lender</th>
+        <th class="center">Tipo</th>
+        <th class="center">GPS</th>
         <th class="center">Ações</th>
       </tr>
     </thead>
@@ -161,49 +132,18 @@
   </table>
 </div>
 
-<!-- MODAL NOVO DEAL -->
 <div class="modal-overlay hidden" id="modalOverlay" onclick="closeModalOutside(event)">
   <div class="modal">
     <button class="modal-close" onclick="closeModal()">×</button>
     <div class="modal-title" id="modalTitle">Novo Deal</div>
-    <div class="modal-sub">Preencha os dados para adicionar ao controle</div>
+    <div class="modal-sub">Dados básicos gravados diretamente no DEAL_MASTER</div>
     <div class="form-grid">
-      <div class="form-field">
-        <label class="form-label">Data da venda</label>
-        <input class="form-input" type="date" id="f-data">
-      </div>
-      <div class="form-field">
-        <label class="form-label">Deal ID</label>
-        <input class="form-input" type="text" id="f-deal" placeholder="Ex: 3891">
-      </div>
-      <div class="form-field">
-        <label class="form-label">VIN</label>
-        <input class="form-input" type="text" id="f-vin" placeholder="Últimos 6 ou completo" style="text-transform:uppercase">
-      </div>
-      <div class="form-field">
-        <label class="form-label">Veículo</label>
-        <input class="form-input" type="text" id="f-veiculo" placeholder="Ex: 2020 KIA OPTIMA">
-      </div>
-      <div class="form-field">
-        <label class="form-label">Vendedor</label>
-        <select class="form-select" id="f-vendedor">
-          <option value="">Selecione…</option>
-          <option>Alexandre Z.</option>
-          <option>Lovendy</option>
-          <option>Luigi T.</option>
-          <option>Giovanna/Guilherme</option>
-          <option>Antonio</option>
-          <option>Outro</option>
-        </select>
-      </div>
-      <div class="form-field">
-        <label class="form-label">GPS</label>
-        <select class="form-select" id="f-gps">
-          <option value="nao">Não tem</option>
-          <option value="financeira">Financeira</option>
-          <option value="flacenter">FlaCenter (parcelamento)</option>
-        </select>
-      </div>
+      <div class="form-field"><label class="form-label">Data da venda</label><input class="form-input" type="date" id="f-data"></div>
+      <div class="form-field"><label class="form-label">Deal ID</label><input class="form-input" type="text" id="f-deal" placeholder="Ex: 3891"></div>
+      <div class="form-field"><label class="form-label">VIN</label><input class="form-input" type="text" id="f-vin" placeholder="Últimos 6 ou completo" style="text-transform:uppercase"></div>
+      <div class="form-field"><label class="form-label">Veículo</label><input class="form-input" type="text" id="f-veiculo" placeholder="Ex: 2020 KIA OPTIMA"></div>
+      <div class="form-field"><label class="form-label">Vendedor</label><input class="form-input" type="text" id="f-vendedor" placeholder="Nome do vendedor"></div>
+      <div class="form-field"><label class="form-label">GPS</label><select class="form-select" id="f-gps"><option value="nao">Não tem</option><option value="sim">Obrigatório</option><option value="financeira">Financeira</option><option value="flacenter">FlaCenter</option></select></div>
     </div>
     <button class="btn-save" onclick="saveDeal()">Salvar deal →</button>
   </div>
@@ -213,116 +153,99 @@
 
 <script>
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKONEy9LywAzjGqmtmdUDodSDK7oLySpAIRjoi6KpG6txCb-VT9T6zYJ-Zgx4IcUda/exec';
+const STATUS_FIELDS = ['review_status','commission_status','dmv_status','parcelamento_status','title_status','omnia_status','folder_status','envelope_status'];
+const HUB_MODEL = { source: 'DEAL_MASTER', alerts: 'DEAL_ALERTS', nextViews: ['dashboard', 'hub'] };
+const STATUS_OPTIONS = ['pending','approved','blocked','completed','paid','sent','created','done','not_required'];
 
 let allDeals = [];
 let currentFilter = 'todos';
 let searchTerm = '';
 let editingId = null;
 
-// ---- API ----
 async function loadFromSheets(){
   document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Carregando…</td></tr>';
   try {
-    const res = await fetch(SCRIPT_URL);
+    const res = await fetch(`${SCRIPT_URL}?source=DEAL_MASTER`);
     const data = await res.json();
     if(data.success){
-      allDeals = (data.deals||[]).map(d=>({
-        ...d,
-        folhaRosto:      d.folhaRosto==='true'||d.folhaRosto===true,
-        comissaoDC:      d.comissaoDC==='true'||d.comissaoDC===true,
-        comissaoPlanilha:d.comissaoPlanilha==='true'||d.comissaoPlanilha===true,
-        soldFunded:      d.soldFunded==='true'||d.soldFunded===true,
-        baixaDP:         d.baixaDP==='true'||d.baixaDP===true,
-        baixaNetcheck:   d.baixaNetcheck==='true'||d.baixaNetcheck===true,
-        omnia:           d.omnia==='true'||d.omnia===true,
-        dmvDoc:          d.dmvDoc==='true'||d.dmvDoc===true,
-        envelope:        d.envelope==='true'||d.envelope===true,
-        pastaSuspensa:   d.pastaSuspensa==='true'||d.pastaSuspensa===true,
-      }));
+      allDeals = (data.deals||[]).map(normalizeDeal);
       renderTable();
+    } else {
+      throw new Error(data.error || 'Erro ao carregar DEAL_MASTER');
     }
   } catch(e){
-    document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Erro ao carregar. Verifique a conexão.</td></tr>';
+    document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Erro ao carregar DEAL_MASTER / DEAL_ALERTS.</td></tr>';
   }
 }
 
-async function saveToSheets(deal){
-  try {
-    await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify({action:'save',...deal}) });
-  } catch(e){ console.warn('Sheets save error:',e); }
+async function saveToSheets(payload){
+  const res = await fetch(SCRIPT_URL, { method:'POST', body:JSON.stringify(payload) });
+  try { return await res.json(); } catch(e){ return { success:false }; }
 }
 
-const COLS = ['folhaRosto','comissaoDC','comissaoPlanilha','soldFunded','baixaDP','baixaNetcheck','omnia','dmvDoc','envelope','pastaSuspensa'];
-
-function emptyDeal(data={}){
+function normalizeDeal(d={}){
+  const dealId = d.deal_id || d.dealId || d.id || '';
   return {
-    id: data.id || Date.now().toString(),
-    data: data.data || '',
-    dealId: data.dealId || '',
-    vin: data.vin || '',
-    veiculo: data.veiculo || '',
-    vendedor: data.vendedor || '',
-    gps: data.gps || 'nao',
-    pgComissao: data.pgComissao || 'pendente',
-    ...Object.fromEntries(COLS.map(c => [c, data[c] || false])),
+    ...d,
+    id: String(dealId),
+    deal_id: String(dealId),
+    dealId: String(dealId),
+    data: d.sale_date || d.data || '',
+    vin: d.vin || '',
+    veiculo: d.vehicle || d.veiculo || '',
+    vendedor: d.seller || d.vendedor || '',
+    gps_required: d.gps_required || d.gps || '',
+    alerts: d.alerts || [],
+    alert_count: Number(d.alert_count || (d.alerts||[]).length || 0),
+    critical_alert_count: Number(d.critical_alert_count || 0),
+    review_status: d.review_status || 'pending',
+    commission_status: d.commission_status || 'pending',
+    dmv_status: d.dmv_status || 'pending',
+    parcelamento_status: d.parcelamento_status || '',
+    title_status: d.title_status || '',
+    omnia_status: d.omnia_status || '',
+    folder_status: d.folder_status || '',
+    envelope_status: d.envelope_status || '',
   };
 }
 
-// ---- RENDER ----
-function gpsLabel(v){
-  if(v==='financeira') return '<span style="font-size:10px;color:var(--text-muted)">Financeira</span>';
-  if(v==='flacenter') return '<span style="font-size:10px;color:var(--amber)">FlaCenter</span>';
-  return '<span style="font-size:10px;color:var(--text-muted)">—</span>';
+function statusLabel(value){
+  return ({
+    pending:'Pendente', approved:'Aprovado', blocked:'Bloqueado', completed:'Completo',
+    paid:'Pago', sent:'Enviado', created:'Criado', done:'OK', not_required:'N/A', rejected:'Reprovado'
+  })[value] || (value || '—');
+}
+
+function statusSelect(deal, field){
+  const value = deal[field] || '';
+  const options = ['', ...STATUS_OPTIONS, value].filter((v,i,a)=>a.indexOf(v)===i);
+  return `<select class="status-select ${value}" onchange="setMasterStatus('${deal.id}','${field}',this)">
+    ${options.map(opt => `<option value="${opt}" ${value===opt?'selected':''}>${statusLabel(opt)}</option>`).join('')}
+  </select>`;
+}
+
+function alertBadge(deal){
+  const count = deal.alert_count || 0;
+  const critical = deal.critical_alert_count || 0;
+  const klass = critical > 0 ? 'critical' : count > 0 ? 'has-alerts' : '';
+  const label = critical > 0 ? `${critical} crítico / ${count}` : `${count}`;
+  const title = (deal.alerts || []).map(a => `${a.priority || ''} ${a.alert_type || ''}`.trim()).join('\n');
+  return `<span class="alert-badge ${klass}" title="${escapeAttr(title)}">${label}</span>`;
 }
 
 function renderRow(deal){
   const tr = document.createElement('tr');
   tr.dataset.id = deal.id;
-
-  const allOk = COLS.every(c => c === 'baixaNetcheck' ? true : deal[c]); // netcheck optional
-  const pgClass = deal.pgComissao === 'pago' ? 'pago' : 'pendente';
-
   tr.innerHTML = `
-    <td class="muted">${deal.data ? new Date(deal.data+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—'}</td>
-    <td><div class="deal-id">${deal.dealId || '—'}</div></td>
-    <td>
-      <div class="deal-veiculo">${deal.veiculo || '—'}</div>
-      <div class="deal-vendedor">${deal.vendedor || '—'}</div>
-    </td>
-    ${COLS.slice(0,9).map(col => `
-      <td class="center">
-        <div class="toggle-wrap">
-          <div class="toggle ${deal[col]?'on':''}" onclick="toggleCol('${deal.id}','${col}',this)"></div>
-        </div>
-      </td>
-    `).join('')}
-    <td class="center">${gpsLabel(deal.gps)}</td>
-    <td class="center">
-      <div class="toggle-wrap">
-        <div class="toggle ${deal['dmvDoc']?'on':''}" onclick="toggleCol('${deal.id}','dmvDoc',this)"></div>
-      </div>
-    </td>
-    <td class="center">
-      <div class="toggle-wrap">
-        <div class="toggle ${deal['envelope']?'on':''}" onclick="toggleCol('${deal.id}','envelope',this)"></div>
-      </div>
-    </td>
-    <td class="center">
-      <div class="toggle-wrap">
-        <div class="toggle ${deal['pastaSuspensa']?'on':''}" onclick="toggleCol('${deal.id}','pastaSuspensa',this)"></div>
-      </div>
-    </td>
-    <td class="center">
-      <select class="pg-select ${pgClass}" onchange="setPgComissao('${deal.id}',this)">
-        <option value="pendente" ${deal.pgComissao==='pendente'?'selected':''}>Pendente</option>
-        <option value="pago" ${deal.pgComissao==='pago'?'selected':''}>✓ Pago</option>
-        <option value="bloqueado" ${deal.pgComissao==='bloqueado'?'selected':''}>✗ Bloqueado</option>
-      </select>
-    </td>
-    <td class="center">
-      <button onclick="editDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Editar">✏️</button>
-      <button onclick="deleteDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Excluir">🗑️</button>
-    </td>
+    <td class="muted">${formatDate(deal.data)}</td>
+    <td><div class="deal-id">${escapeHtml(deal.dealId || '—')}</div></td>
+    <td><div class="deal-veiculo">${escapeHtml(deal.veiculo || '—')}</div><div class="deal-vendedor">${escapeHtml(deal.vendedor || '—')}</div></td>
+    ${STATUS_FIELDS.map(field => `<td class="center">${statusSelect(deal, field)}</td>`).join('')}
+    <td class="center">${alertBadge(deal)}</td>
+    <td class="center muted">${escapeHtml(deal.lender || '—')}</td>
+    <td class="center muted">${escapeHtml(deal.deal_type || '—')}</td>
+    <td class="center muted">${escapeHtml(deal.gps_required || '—')}</td>
+    <td class="center"><button onclick="editDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Editar">✏️</button></td>
   `;
   return tr;
 }
@@ -330,66 +253,51 @@ function renderRow(deal){
 function renderTable(){
   const body = document.getElementById('tableBody');
   body.innerHTML = '';
-
-  let filtered = allDeals.filter(d => {
-    const matchSearch = !searchTerm ||
-      d.dealId?.toLowerCase().includes(searchTerm) ||
-      d.vin?.toLowerCase().includes(searchTerm) ||
-      d.veiculo?.toLowerCase().includes(searchTerm) ||
-      d.vendedor?.toLowerCase().includes(searchTerm);
-
-    const allToggled = COLS.filter(c=>c!=='baixaNetcheck').every(c=>d[c]);
-    const matchFilter =
-      currentFilter === 'todos' ? true :
-      currentFilter === 'pendentes' ? !allToggled :
-      currentFilter === 'aprovados' ? allToggled :
-      currentFilter === 'sem-pg' ? d.pgComissao !== 'pago' : true;
-
+  const filtered = allDeals.filter(d => {
+    const q = searchTerm;
+    const matchSearch = !q || [d.dealId,d.vin,d.veiculo,d.vendedor,d.lender,d.deal_type].some(v => String(v||'').toLowerCase().includes(q));
+    const complete = STATUS_FIELDS.every(field => isCompleteStatus(d[field]));
+    const matchFilter = currentFilter === 'todos' ? true :
+      currentFilter === 'pendentes' ? !complete :
+      currentFilter === 'aprovados' ? complete :
+      currentFilter === 'sem-pg' ? !isCompleteStatus(d.commission_status) :
+      currentFilter === 'alertas' ? d.alert_count > 0 : true;
     return matchSearch && matchFilter;
   });
 
   if(filtered.length === 0){
     const tr = document.createElement('tr');
     tr.className = 'empty-row';
-    tr.innerHTML = `<td colspan="16">${allDeals.length === 0 ? 'Nenhum deal cadastrado. Clique em "+ Novo Deal" para começar.' : 'Nenhum deal encontrado.'}</td>`;
+    tr.innerHTML = `<td colspan="16">${allDeals.length === 0 ? 'Nenhum deal encontrado no DEAL_MASTER.' : 'Nenhum deal encontrado.'}</td>`;
     body.appendChild(tr);
   } else {
     filtered.forEach(d => body.appendChild(renderRow(d)));
   }
-
   updateStats();
 }
 
 function updateStats(){
   const total = allDeals.length;
-  const aprovados = allDeals.filter(d => COLS.filter(c=>c!=='baixaNetcheck').every(c=>d[c])).length;
-  const pendentes = total - aprovados;
+  const completos = allDeals.filter(d => STATUS_FIELDS.every(field => isCompleteStatus(d[field]))).length;
+  const criticos = allDeals.filter(d => d.critical_alert_count > 0).length;
   document.getElementById('stat-total').textContent = total + ' total';
-  document.getElementById('stat-aprovados').textContent = aprovados + ' completos';
-  document.getElementById('stat-pendentes').textContent = pendentes + ' pendentes';
+  document.getElementById('stat-aprovados').textContent = completos + ' completos';
+  document.getElementById('stat-pendentes').textContent = (total - completos) + ' pendentes';
+  document.getElementById('stat-alertas').textContent = criticos + ' críticos';
 }
 
-// ---- TOGGLE ----
-function toggleCol(id, col, el){
+async function setMasterStatus(id, field, sel){
   const deal = allDeals.find(d=>d.id===id);
   if(!deal) return;
-  deal[col] = !deal[col];
-  el.classList.toggle('on', deal[col]);
-  saveToSheets(deal);
+  const oldValue = deal[field] || '';
+  deal[field] = sel.value;
+  sel.className = `status-select ${sel.value}`;
   updateStats();
-  showToast();
+  const result = await saveToSheets({ action:'updateStatus', deal_id:id, field, value:sel.value });
+  if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${oldValue}`; showToast('Erro ao salvar'); return; }
+  showToast('Status atualizado!');
 }
 
-function setPgComissao(id, sel){
-  const deal = allDeals.find(d=>d.id===id);
-  if(!deal) return;
-  deal.pgComissao = sel.value;
-  sel.className = `pg-select ${sel.value}`;
-  saveToSheets(deal);
-  showToast();
-}
-
-// ---- FILTER / SEARCH ----
 function setFilter(f, btn){
   currentFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -397,12 +305,8 @@ function setFilter(f, btn){
   renderTable();
 }
 
-function filterDeals(val){
-  searchTerm = val.toLowerCase().trim();
-  renderTable();
-}
+function filterDeals(val){ searchTerm = val.toLowerCase().trim(); renderTable(); }
 
-// ---- MODAL ----
 function openModal(prefill={}){
   editingId = prefill.id || null;
   document.getElementById('modalTitle').textContent = editingId ? 'Editar Deal' : 'Novo Deal';
@@ -411,61 +315,39 @@ function openModal(prefill={}){
   document.getElementById('f-vin').value = prefill.vin || '';
   document.getElementById('f-veiculo').value = prefill.veiculo || '';
   document.getElementById('f-vendedor').value = prefill.vendedor || '';
-  document.getElementById('f-gps').value = prefill.gps || 'nao';
+  document.getElementById('f-gps').value = prefill.gps_required || 'nao';
   document.getElementById('modalOverlay').classList.remove('hidden');
 }
-
-function editDeal(id){
-  const deal = allDeals.find(d=>d.id===id);
-  if(deal) openModal(deal);
-}
-
+function editDeal(id){ const deal = allDeals.find(d=>d.id===id); if(deal) openModal(deal); }
 function closeModal(){ document.getElementById('modalOverlay').classList.add('hidden'); editingId=null; }
 function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
 
-function saveDeal(){
+async function saveDeal(){
   const dealId = document.getElementById('f-deal').value.trim();
   const veiculo = document.getElementById('f-veiculo').value.trim();
   if(!dealId || !veiculo){ alert('Deal ID e Veículo são obrigatórios.'); return; }
-
-  if(editingId){
-    const idx = allDeals.findIndex(d=>d.id===editingId);
-    if(idx!==-1){
-      allDeals[idx] = {
-        ...allDeals[idx],
-        data: document.getElementById('f-data').value,
-        dealId,
-        vin: document.getElementById('f-vin').value.trim().toUpperCase(),
-        veiculo,
-        vendedor: document.getElementById('f-vendedor').value,
-        gps: document.getElementById('f-gps').value,
-      };
-    }
-  } else {
-    allDeals.unshift(emptyDeal({
-      data: document.getElementById('f-data').value,
-      dealId,
-      vin: document.getElementById('f-vin').value.trim().toUpperCase(),
-      veiculo,
-      vendedor: document.getElementById('f-vendedor').value,
-      gps: document.getElementById('f-gps').value,
-    }));
-  }
-
-  const savedDeal = editingId ? allDeals[allDeals.findIndex(d=>d.id===editingId)] : allDeals[0];
-  saveToSheets(savedDeal);
+  const payload = normalizeDeal({
+    deal_id: dealId,
+    sale_date: document.getElementById('f-data').value,
+    vin: document.getElementById('f-vin').value.trim().toUpperCase(),
+    vehicle: veiculo,
+    seller: document.getElementById('f-vendedor').value.trim(),
+    gps_required: document.getElementById('f-gps').value,
+  });
+  const result = await saveToSheets({ action:'saveDealMaster', ...payload });
+  if(!result.success){ showToast('Erro ao salvar'); return; }
+  const idx = allDeals.findIndex(d=>d.id===payload.id);
+  if(idx >= 0) allDeals[idx] = { ...allDeals[idx], ...payload };
+  else allDeals.unshift(payload);
   closeModal();
   renderTable();
   showToast(editingId ? 'Atualizado!' : 'Deal adicionado!');
 }
 
-function deleteDeal(id){
-  if(!confirm('Excluir este deal do controle?')) return;
-  allDeals = allDeals.filter(d=>d.id!==id);
-  renderTable();
-}
-
-// ---- TOAST ----
+function isCompleteStatus(value){ return ['approved','completed','paid','sent','created','done','not_required'].includes(String(value || '').toLowerCase()); }
+function formatDate(value){ return value ? new Date(value+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—'; }
+function escapeHtml(value){ return String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escapeAttr(value){ return escapeHtml(value).replace(/\n/g, '&#10;'); }
 function showToast(msg='✓ Salvo!'){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -473,7 +355,6 @@ function showToast(msg='✓ Salvo!'){
   setTimeout(()=>t.classList.remove('show'), 1800);
 }
 
-// ---- INIT ----
 loadFromSheets();
 </script>
 </body>
