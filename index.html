@@ -51,9 +51,9 @@
   .deal-veiculo{font-size:12px;font-weight:500;}
   .deal-vendedor{font-size:11px;color:var(--text-muted);}
   .status-select{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 6px;outline:none;cursor:pointer;max-width:120px;}
-  .status-select.pending{border-color:rgba(245,158,11,0.45);color:var(--amber);background:var(--amber-glow);}
-  .status-select.approved,.status-select.completed,.status-select.paid,.status-select.sent,.status-select.created,.status-select.done{border-color:rgba(16,185,129,0.45);color:var(--green);background:var(--green-glow);}
-  .status-select.blocked,.status-select.rejected,.status-select.critical{border-color:rgba(239,68,68,0.45);color:var(--red);background:var(--red-glow);}
+  .status-select.status-pending{border-color:rgba(245,158,11,0.45);color:var(--amber);background:var(--amber-glow);}
+  .status-select.status-complete{border-color:rgba(16,185,129,0.45);color:var(--green);background:var(--green-glow);}
+  .status-select.status-critical{border-color:rgba(239,68,68,0.45);color:var(--red);background:var(--red-glow);}
   .alert-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);}
   .alert-badge.has-alerts{border-color:rgba(245,158,11,0.35);background:var(--amber-glow);color:var(--amber);}
   .alert-badge.critical{border-color:rgba(239,68,68,0.45);background:var(--red-glow);color:var(--red);}
@@ -155,7 +155,60 @@
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzKONEy9LywAzjGqmtmdUDodSDK7oLySpAIRjoi6KpG6txCb-VT9T6zYJ-Zgx4IcUda/exec';
 const STATUS_FIELDS = ['review_status','commission_status','dmv_status','parcelamento_status','title_status','omnia_status','folder_status','envelope_status'];
 const HUB_MODEL = { source: 'DEAL_MASTER', alerts: 'DEAL_ALERTS', nextViews: ['dashboard', 'hub'] };
-const STATUS_OPTIONS = ['pending','approved','blocked','completed','paid','sent','created','done','not_required'];
+const STATUS_CONFIG = {
+  review_status: [
+    ['pending', 'Pendente'],
+    ['approved', 'Aprovado'],
+    ['rejected', 'Rejeitado'],
+  ],
+  commission_status: [
+    ['pending', 'Pendente'],
+    ['blocked', 'Bloqueada'],
+    ['approved', 'Aprovada'],
+    ['paid', 'Paga'],
+  ],
+  dmv_status: [
+    ['pending', 'Pendente'],
+    ['sent', 'Enviado'],
+    ['done', 'Concluído'],
+  ],
+  parcelamento_status: [
+    ['not_needed', 'Não se aplica'],
+    ['pending', 'Pendente'],
+    ['created', 'Criado'],
+  ],
+  title_status: [
+    ['missing', 'Ausente'],
+    ['electronic', 'Eletrônico'],
+    ['received', 'Recebido'],
+  ],
+  omnia_status: [
+    ['pending', 'Pendente'],
+    ['done', 'Feito'],
+  ],
+  folder_status: [
+    ['pending', 'Pendente'],
+    ['done', 'Feito'],
+  ],
+  envelope_status: [
+    ['pending', 'Pendente'],
+    ['done', 'Feito'],
+  ],
+};
+const STATUS_TONES = {
+  pending: 'status-pending',
+  blocked: 'status-critical',
+  rejected: 'status-critical',
+  missing: 'status-critical',
+  approved: 'status-complete',
+  paid: 'status-complete',
+  sent: 'status-complete',
+  done: 'status-complete',
+  created: 'status-complete',
+  received: 'status-complete',
+  electronic: 'status-complete',
+  not_needed: 'status-complete',
+};
 
 let allDeals = [];
 let currentFilter = 'todos';
@@ -209,18 +262,26 @@ function normalizeDeal(d={}){
   };
 }
 
-function statusLabel(value){
-  return ({
-    pending:'Pendente', approved:'Aprovado', blocked:'Bloqueado', completed:'Completo',
-    paid:'Pago', sent:'Enviado', created:'Criado', done:'OK', not_required:'N/A', rejected:'Reprovado'
-  })[value] || (value || '—');
+function statusLabel(field, value){
+  const options = STATUS_CONFIG[field] || [];
+  const found = options.find(([internal]) => internal === value);
+  return found ? found[1] : (value || '—');
+}
+
+function statusOptions(field, value){
+  const options = [['', '—'], ...(STATUS_CONFIG[field] || [])];
+  if(value && !options.some(([internal]) => internal === value)) options.push([value, value]);
+  return options;
+}
+
+function statusToneClass(value){
+  return STATUS_TONES[String(value || '').toLowerCase()] || '';
 }
 
 function statusSelect(deal, field){
   const value = deal[field] || '';
-  const options = ['', ...STATUS_OPTIONS, value].filter((v,i,a)=>a.indexOf(v)===i);
-  return `<select class="status-select ${value}" onchange="setMasterStatus('${deal.id}','${field}',this)">
-    ${options.map(opt => `<option value="${opt}" ${value===opt?'selected':''}>${statusLabel(opt)}</option>`).join('')}
+  return `<select class="status-select ${statusToneClass(value)}" onchange="setMasterStatus('${deal.id}','${field}',this)">
+    ${statusOptions(field, value).map(([internal, label]) => `<option value="${internal}" ${value===internal?'selected':''}>${label}</option>`).join('')}
   </select>`;
 }
 
@@ -291,10 +352,10 @@ async function setMasterStatus(id, field, sel){
   if(!deal) return;
   const oldValue = deal[field] || '';
   deal[field] = sel.value;
-  sel.className = `status-select ${sel.value}`;
+  sel.className = `status-select ${statusToneClass(sel.value)}`;
   updateStats();
   const result = await saveToSheets({ action:'updateStatus', deal_id:id, field, value:sel.value });
-  if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${oldValue}`; showToast('Erro ao salvar'); return; }
+  if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${statusToneClass(oldValue)}`; showToast('Erro ao salvar'); return; }
   showToast('Status atualizado!');
 }
 
@@ -310,7 +371,7 @@ function filterDeals(val){ searchTerm = val.toLowerCase().trim(); renderTable();
 function openModal(prefill={}){
   editingId = prefill.id || null;
   document.getElementById('modalTitle').textContent = editingId ? 'Editar Deal' : 'Novo Deal';
-  document.getElementById('f-data').value = prefill.data || new Date().toISOString().split('T')[0];
+  document.getElementById('f-data').value = toDateInputValue(prefill.data) || new Date().toISOString().split('T')[0];
   document.getElementById('f-deal').value = prefill.dealId || '';
   document.getElementById('f-vin').value = prefill.vin || '';
   document.getElementById('f-veiculo').value = prefill.veiculo || '';
@@ -344,8 +405,35 @@ async function saveDeal(){
   showToast(editingId ? 'Atualizado!' : 'Deal adicionado!');
 }
 
-function isCompleteStatus(value){ return ['approved','completed','paid','sent','created','done','not_required'].includes(String(value || '').toLowerCase()); }
-function formatDate(value){ return value ? new Date(value+'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—'; }
+function isCompleteStatus(value){ return ['approved','paid','sent','done','created','received','electronic','not_needed'].includes(String(value || '').toLowerCase()); }
+function toValidDate(value){
+  if(!value) return null;
+  if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if(typeof value === 'number') {
+    const serialDate = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(serialDate.getTime()) ? null : serialDate;
+  }
+  const text = String(value).trim();
+  if(!text) return null;
+  let match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+  match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(match) return new Date(Number(match[3]), Number(match[1]) - 1, Number(match[2]), 12);
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+function formatDate(value){
+  const date = toValidDate(value);
+  return date ? date.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) : '—';
+}
+function toDateInputValue(value){
+  const date = toValidDate(value);
+  if(!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 function escapeHtml(value){ return String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function escapeAttr(value){ return escapeHtml(value).replace(/\n/g, '&#10;'); }
 function showToast(msg='✓ Salvo!'){
