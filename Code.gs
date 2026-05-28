@@ -3,7 +3,7 @@ const DEAL_MASTER_HEADERS = [
   'lender', 'deal_type', 'trade_in', 'gps_required', 'parcelado', 'out_of_state',
   'company_deal', 'review_status', 'commission_status', 'dmv_status',
   'parcelamento_status', 'title_status', 'omnia_status', 'folder_status',
-  'envelope_status', 'created_at', 'updated_at', 'hub_status'
+  'envelope_status', 'created_at', 'updated_at', 'hub_status', 'document_status'
 ];
 
 const DEAL_ALERTS_HEADERS = [
@@ -81,6 +81,7 @@ function getDealDetailsResponse(ss, dealId) {
   const historySheet = ensureSheet(ss, 'DEAL_HISTORY', DEAL_HISTORY_HEADERS);
   const documentsSheet = ensureSheet(ss, 'DEAL_DOCUMENTS', DEAL_DOCUMENTS_HEADERS);
   const notesSheet = ensureSheet(ss, 'DEAL_NOTES', DEAL_NOTES_HEADERS);
+  const health = syncDealHealth(ss, dealId);
   const deal = getDealMasterById(masterSheet, dealId);
 
   if (!deal) throw new Error('Deal nao encontrado no DEAL_MASTER: ' + dealId);
@@ -93,6 +94,7 @@ function getDealDetailsResponse(ss, dealId) {
     history: getRowsByDealId(historySheet, dealId),
     documents: getRowsByDealId(documentsSheet, dealId),
     notes: getRowsByDealId(notesSheet, dealId),
+    health,
   });
 }
 
@@ -135,13 +137,20 @@ function doPost(e) {
 
     if (payload.action === 'updateStatus') {
       updateDealMasterStatus(masterSheet, historySheet, payload);
-      return jsonOutput({ success: true });
+      const health = syncDealHealth(ss, payload.deal_id || payload.dealId || payload.id);
+      return jsonOutput({ success: true, health });
     }
 
     if (payload.action === 'updateDocumentStatus') {
       const documentsSheet = ensureSheet(ss, 'DEAL_DOCUMENTS', DEAL_DOCUMENTS_HEADERS);
       const document = updateDealDocumentStatus(documentsSheet, historySheet, payload);
-      return jsonOutput({ success: true, document });
+      const health = syncDealHealth(ss, payload.deal_id || payload.dealId || payload.id);
+      return jsonOutput({ success: true, document, health });
+    }
+
+    if (payload.action === 'syncDealHealth') {
+      const health = syncDealHealth(ss, payload.deal_id || payload.dealId || payload.id);
+      return jsonOutput({ success: true, health });
     }
 
     if (payload.action === 'addDealNote') {
@@ -152,10 +161,12 @@ function doPost(e) {
 
     if (payload.action === 'saveDealMaster' || payload.action === 'save') {
       upsertDealMaster(masterSheet, historySheet, payload);
-      return jsonOutput({ success: true, id: payload.deal_id || payload.dealId || payload.id });
+      const id = payload.deal_id || payload.dealId || payload.id;
+      const health = syncDealHealth(ss, id);
+      return jsonOutput({ success: true, id, health });
     }
 
-    return jsonOutput({ success: false, error: 'Acao invalida' });
+    return jsonOutput({ success: false, error: 'Ação inválida' });
   } catch (err) {
     return jsonOutput({ success: false, error: err.message });
   }
@@ -163,7 +174,7 @@ function doPost(e) {
 
 function getCentralSpreadsheet() {
   const id = PropertiesService.getScriptProperties().getProperty('CENTRAL_DB_ID');
-  if (!id) throw new Error('CENTRAL_DB_ID nao configurado nas Script Properties.');
+  if (!id) throw new Error('CENTRAL_DB_ID não configurado nas Script Properties.');
   return SpreadsheetApp.openById(id);
 }
 
@@ -218,11 +229,11 @@ function getOpenAlertsByDeal(sheet) {
 function updateDealMasterStatus(masterSheet, historySheet, payload) {
   const dealId = payload.deal_id || payload.dealId || payload.id;
   const field = payload.field;
-  if (!dealId) throw new Error('deal_id obrigatorio');
-  if (!DEAL_MASTER_STATUS_FIELDS.includes(field)) throw new Error('Campo de status invalido: ' + field);
+  if (!dealId) throw new Error('deal_id obrigatório');
+  if (!DEAL_MASTER_STATUS_FIELDS.includes(field)) throw new Error('Campo de status inválido: ' + field);
 
   const row = findDealMasterRow(masterSheet, dealId);
-  if (row < 1) throw new Error('Deal nao encontrado no DEAL_MASTER: ' + dealId);
+  if (row < 1) throw new Error('Deal não encontrado no DEAL_MASTER: ' + dealId);
 
   const column = DEAL_MASTER_HEADERS.indexOf(field) + 1;
   masterSheet.getRange(row, column).setValue(payload.value || '');
@@ -245,17 +256,17 @@ function updateDealDocumentStatus(documentsSheet, historySheet, payload) {
   const field = payload.field;
   const value = payload.value || '';
 
-  if (!dealId) throw new Error('deal_id obrigatorio');
-  if (!documentName) throw new Error('document_name obrigatorio');
+  if (!dealId) throw new Error('deal_id obrigatório');
+  if (!documentName) throw new Error('document_name obrigatório');
   if (!['printed_status', 'dealer_center_status'].includes(field)) {
-    throw new Error('Campo de documento invalido: ' + field);
+    throw new Error('Campo de documento inválido: ' + field);
   }
   if (!['pending', 'ok', 'missing', ''].includes(value)) {
-    throw new Error('Status de documento invalido: ' + value);
+    throw new Error('Status de documento inválido: ' + value);
   }
 
   const row = findDealDocumentRow(documentsSheet, dealId, documentName);
-  if (row < 1) throw new Error('Documento nao encontrado no DEAL_DOCUMENTS: ' + documentName);
+  if (row < 1) throw new Error('Documento não encontrado no DEAL_DOCUMENTS: ' + documentName);
 
   const headers = getSheetHeaders(documentsSheet, DEAL_DOCUMENTS_HEADERS);
   const currentValues = documentsSheet.getRange(row, 1, 1, headers.length).getValues()[0];
@@ -301,6 +312,152 @@ function addDealNote(notesSheet, historySheet, payload) {
   return note;
 }
 
+function syncDealHealth(ss, dealId) {
+  if (!dealId) throw new Error('deal_id obrigatorio');
+
+  const masterSheet = ensureSheet(ss, 'DEAL_MASTER', DEAL_MASTER_HEADERS);
+  const documentsSheet = ensureSheet(ss, 'DEAL_DOCUMENTS', DEAL_DOCUMENTS_HEADERS);
+  const alertsSheet = ensureSheet(ss, 'DEAL_ALERTS', DEAL_ALERTS_HEADERS);
+  const historySheet = ensureSheet(ss, 'DEAL_HISTORY', DEAL_HISTORY_HEADERS);
+  const row = findDealMasterRow(masterSheet, dealId);
+  if (row < 1) throw new Error('Deal nao encontrado no DEAL_MASTER: ' + dealId);
+
+  const deal = rowToObject(DEAL_MASTER_HEADERS, masterSheet.getRange(row, 1, 1, DEAL_MASTER_HEADERS.length).getValues()[0]);
+  const documents = getRowsByDealId(documentsSheet, dealId);
+  const now = new Date().toISOString();
+  const changes = [];
+
+  if (String(deal.dmv_status || '').toLowerCase() === 'done') {
+    if (String(deal.hub_status || '').toLowerCase() !== 'completed') {
+      setMasterField(masterSheet, row, 'hub_status', 'completed');
+      deal.hub_status = 'completed';
+      changes.push('hub_status = completed');
+    }
+    closeAlertsByTypes(alertsSheet, dealId, ['DMV nao enviado', 'DMV não enviado', 'DMV pending', 'DMV pendente'], now);
+  }
+
+  const documentStatus = calculateDealDocumentStatus(documents);
+  if (documentStatus === 'complete' && String(deal.document_status || '').toLowerCase() !== 'complete') {
+    setMasterField(masterSheet, row, 'document_status', 'complete');
+    deal.document_status = 'complete';
+    changes.push('document_status = complete');
+  } else if (documentStatus !== 'complete' && String(deal.document_status || '').toLowerCase() === 'complete') {
+    setMasterField(masterSheet, row, 'document_status', '');
+    deal.document_status = '';
+    changes.push('document_status = pending');
+  }
+
+  if (hasCriticalDocument(documents)) {
+    ensureOpenAlert(alertsSheet, dealId, 'Documento critico', 'critical', 'open', now);
+  }
+
+  const aging = getAgingInfo(deal.sale_date);
+  if (aging && aging.days > 60) {
+    ensureOpenAlert(alertsSheet, dealId, 'Aging critico', 'critical', 'open', now);
+  }
+
+  const parcelado = String(deal.parcelado || '').toLowerCase();
+  const parcelamentoStatus = String(deal.parcelamento_status || '').toLowerCase();
+  if (['sim', 'yes', 'true'].includes(parcelado) && !['done', 'created', 'complete', 'completed', 'not_needed'].includes(parcelamentoStatus)) {
+    ensureOpenAlert(alertsSheet, dealId, 'Parcelamento financeiro', 'high', 'open', now);
+  }
+
+  if (changes.length) {
+    setMasterField(masterSheet, row, 'updated_at', now);
+    appendHistory(historySheet, dealId, 'sync_deal_health', '', changes.join(', '));
+  }
+
+  const openAlerts = getRowsByDealId(alertsSheet, dealId).filter(alert => !isResolvedAlert(alert));
+  return {
+    health_score: calculateHealthScore(openAlerts, aging, documents),
+    aging,
+    document_status: deal.document_status || (documentStatus === 'complete' ? 'complete' : ''),
+    document_complete: documentStatus === 'complete',
+    alert_count: openAlerts.length,
+    critical_alert_count: openAlerts.filter(isCriticalAlert).length,
+  };
+}
+
+function calculateDealDocumentStatus(documents) {
+  if (!documents.length) return '';
+  return documents.every(document => {
+    const printed = String(document.printed_status || '').toLowerCase();
+    const dealerCenter = String(document.dealer_center_status || '').toLowerCase();
+    const status = String(document.status || '').toLowerCase();
+    return printed === 'ok' && dealerCenter === 'ok' && (status === 'ok' || status === 'complete');
+  }) ? 'complete' : 'pending';
+}
+
+function hasCriticalDocument(documents) {
+  return documents.some(document => {
+    const status = String(document.status || '').toLowerCase();
+    const printed = String(document.printed_status || '').toLowerCase();
+    const dealerCenter = String(document.dealer_center_status || document.dealercenter_status || '').toLowerCase();
+    return status === 'critical' || printed === 'missing' || dealerCenter === 'missing';
+  });
+}
+
+function getAgingInfo(saleDate) {
+  const date = toDateValue(saleDate);
+  if (!date) return null;
+  const today = new Date();
+  const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.max(0, Math.floor((end - start) / 86400000));
+  const tone = days <= 21 ? 'green' : days <= 45 ? 'yellow' : days <= 60 ? 'orange' : 'red';
+  return { days, tone };
+}
+
+function calculateHealthScore(openAlerts, aging, documents) {
+  if (openAlerts.some(isCriticalAlert) || (aging && aging.days > 60) || hasCriticalDocument(documents)) return 'critical';
+  if (openAlerts.length || (aging && aging.days > 21)) return 'attention';
+  return 'ok';
+}
+
+function ensureOpenAlert(sheet, dealId, alertType, priority, status, now) {
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(dealId) && String(values[i][1]) === String(alertType)) {
+      const alert = rowToObject(DEAL_ALERTS_HEADERS, values[i]);
+      if (!isResolvedAlert(alert)) return;
+    }
+  }
+  sheet.appendRow([dealId, alertType, priority || 'high', status || 'open', now || new Date().toISOString(), '']);
+}
+
+function closeAlertsByTypes(sheet, dealId, alertTypes, now) {
+  const values = sheet.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    const alert = rowToObject(DEAL_ALERTS_HEADERS, values[i]);
+    if (String(alert.deal_id) === String(dealId) && alertTypes.includes(String(alert.alert_type)) && !isResolvedAlert(alert)) {
+      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('status') + 1).setValue('resolved');
+      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('resolved_at') + 1).setValue(now || new Date().toISOString());
+    }
+  }
+}
+
+function setMasterField(sheet, row, field, value) {
+  const column = DEAL_MASTER_HEADERS.indexOf(field) + 1;
+  if (column > 0) sheet.getRange(row, column).setValue(value);
+}
+
+function toDateValue(value) {
+  if (!value) return null;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+  if (typeof value === 'number') {
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const text = String(value).trim();
+  if (!text) return null;
+  let match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+  match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) return new Date(Number(match[3]), Number(match[1]) - 1, Number(match[2]), 12);
+  const parsed = new Date(text);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 function calculateDocumentStatus(printedStatus, dealerCenterStatus) {
   const printed = String(printedStatus || 'pending').toLowerCase();
   const dealerCenter = String(dealerCenterStatus || 'pending').toLowerCase();
@@ -312,7 +469,7 @@ function calculateDocumentStatus(printedStatus, dealerCenterStatus) {
 function upsertDealMaster(masterSheet, historySheet, payload) {
   const now = new Date().toISOString();
   const dealId = payload.deal_id || payload.dealId || payload.id;
-  if (!dealId) throw new Error('deal_id obrigatorio');
+  if (!dealId) throw new Error('deal_id obrigatório');
 
   const row = findDealMasterRow(masterSheet, dealId);
   const existing = row > 0 ? masterSheet.getRange(row, 1, 1, DEAL_MASTER_HEADERS.length).getValues()[0] : [];
@@ -394,7 +551,7 @@ function isResolvedAlert(alert) {
 }
 
 function isCriticalAlert(alert) {
-  return ['critical', 'critico', 'critico', 'high', 'alta'].includes(String(alert.priority || '').toLowerCase());
+  return ['critical', 'critico', 'crítico', 'high', 'alta'].includes(String(alert.priority || '').toLowerCase());
 }
 
 function pick() {
