@@ -10,6 +10,10 @@ const DEAL_ALERTS_HEADERS = [
   'deal_id', 'alert_type', 'priority', 'status', 'created_at', 'resolved_at'
 ];
 
+const DEAL_DOCUMENTS_HEADERS = [
+  'deal_id', 'document_name', 'printed_status', 'dealer_center_status', 'status', 'created_at', 'updated_at'
+];
+
 const DEAL_HISTORY_HEADERS = [
   'deal_id', 'action', 'user', 'notes', 'timestamp'
 ];
@@ -28,6 +32,12 @@ const DEAL_MASTER_STATUS_FIELDS = [
 function doGet(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const action = e && e.parameter ? e.parameter.action : '';
+
+    if (action === 'getDealDetails') {
+      return getDealDetailsResponse(ss, e.parameter.deal_id || e.parameter.id || '');
+    }
+
     const masterSheet = ensureSheet(ss, 'DEAL_MASTER', DEAL_MASTER_HEADERS);
     const alertsSheet = ensureSheet(ss, 'DEAL_ALERTS', DEAL_ALERTS_HEADERS);
     const deals = getDealMasterRows(masterSheet);
@@ -55,6 +65,48 @@ function doGet(e) {
   }
 }
 
+function getDealDetailsResponse(ss, dealId) {
+  if (!dealId) throw new Error('deal_id obrigatorio');
+
+  const masterSheet = ensureSheet(ss, 'DEAL_MASTER', DEAL_MASTER_HEADERS);
+  const alertsSheet = ensureSheet(ss, 'DEAL_ALERTS', DEAL_ALERTS_HEADERS);
+  const historySheet = ensureSheet(ss, 'DEAL_HISTORY', DEAL_HISTORY_HEADERS);
+  const documentsSheet = ensureSheet(ss, 'DEAL_DOCUMENTS', DEAL_DOCUMENTS_HEADERS);
+  const deal = getDealMasterById(masterSheet, dealId);
+
+  if (!deal) throw new Error('Deal nao encontrado no DEAL_MASTER: ' + dealId);
+
+  return jsonOutput({
+    success: true,
+    source: 'DEAL_MASTER',
+    deal,
+    alerts: getRowsByDealId(alertsSheet, dealId).filter(alert => !isResolvedAlert(alert)),
+    history: getRowsByDealId(historySheet, dealId),
+    documents: getRowsByDealId(documentsSheet, dealId),
+  });
+}
+
+function getDealMasterById(sheet, dealId) {
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return null;
+  const headers = values[0].map(String);
+
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][0]) === String(dealId)) return rowToObject(headers, values[i]);
+  }
+  return null;
+}
+
+function getRowsByDealId(sheet, dealId) {
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const headers = values[0].map(String);
+
+  return values.slice(1)
+    .filter(row => String(row[0]) === String(dealId))
+    .map(row => rowToObject(headers, row));
+}
+
 function doPost(e) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -72,7 +124,7 @@ function doPost(e) {
       return jsonOutput({ success: true, id: payload.deal_id || payload.dealId || payload.id });
     }
 
-    return jsonOutput({ success: false, error: 'Ação inválida' });
+    return jsonOutput({ success: false, error: 'AÃ§Ã£o invÃ¡lida' });
   } catch (err) {
     return jsonOutput({ success: false, error: err.message });
   }
@@ -129,11 +181,11 @@ function getOpenAlertsByDeal(sheet) {
 function updateDealMasterStatus(masterSheet, historySheet, payload) {
   const dealId = payload.deal_id || payload.dealId || payload.id;
   const field = payload.field;
-  if (!dealId) throw new Error('deal_id obrigatório');
-  if (!DEAL_MASTER_STATUS_FIELDS.includes(field)) throw new Error('Campo de status inválido: ' + field);
+  if (!dealId) throw new Error('deal_id obrigatÃ³rio');
+  if (!DEAL_MASTER_STATUS_FIELDS.includes(field)) throw new Error('Campo de status invÃ¡lido: ' + field);
 
   const row = findDealMasterRow(masterSheet, dealId);
-  if (row < 1) throw new Error('Deal não encontrado no DEAL_MASTER: ' + dealId);
+  if (row < 1) throw new Error('Deal nÃ£o encontrado no DEAL_MASTER: ' + dealId);
 
   const column = DEAL_MASTER_HEADERS.indexOf(field) + 1;
   masterSheet.getRange(row, column).setValue(payload.value || '');
@@ -153,7 +205,7 @@ function updateDealMasterStatus(masterSheet, historySheet, payload) {
 function upsertDealMaster(masterSheet, historySheet, payload) {
   const now = new Date().toISOString();
   const dealId = payload.deal_id || payload.dealId || payload.id;
-  if (!dealId) throw new Error('deal_id obrigatório');
+  if (!dealId) throw new Error('deal_id obrigatÃ³rio');
 
   const row = findDealMasterRow(masterSheet, dealId);
   const existing = row > 0 ? masterSheet.getRange(row, 1, 1, DEAL_MASTER_HEADERS.length).getValues()[0] : [];
@@ -222,7 +274,7 @@ function isResolvedAlert(alert) {
 }
 
 function isCriticalAlert(alert) {
-  return ['critical', 'critico', 'crítico', 'high', 'alta'].includes(String(alert.priority || '').toLowerCase());
+  return ['critical', 'critico', 'crÃ­tico', 'high', 'alta'].includes(String(alert.priority || '').toLowerCase());
 }
 
 function pick() {
