@@ -54,6 +54,11 @@
   .status-select.status-pending{border-color:rgba(245,158,11,0.45);color:var(--amber);background:var(--amber-glow);}
   .status-select.status-complete{border-color:rgba(16,185,129,0.45);color:var(--green);background:var(--green-glow);}
   .status-select.status-critical{border-color:rgba(239,68,68,0.45);color:var(--red);background:var(--red-glow);}
+  .aging-badge{display:inline-flex;align-items:center;justify-content:center;min-width:54px;border-radius:20px;padding:3px 8px;font-size:10px;font-family:'DM Mono',monospace;border:1px solid var(--border);color:var(--text-muted);}
+  .aging-badge.green{border-color:rgba(16,185,129,0.45);color:var(--green);background:var(--green-glow);}
+  .aging-badge.yellow{border-color:rgba(245,158,11,0.45);color:var(--amber);background:var(--amber-glow);}
+  .aging-badge.orange{border-color:rgba(249,115,22,0.5);color:#fb923c;background:rgba(249,115,22,0.12);}
+  .aging-badge.red{border-color:rgba(239,68,68,0.45);color:var(--red);background:var(--red-glow);}
   .alert-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);}
   .alert-badge.has-alerts{border-color:rgba(245,158,11,0.35);background:var(--amber-glow);color:var(--amber);}
   .alert-badge.critical{border-color:rgba(239,68,68,0.45);background:var(--red-glow);color:var(--red);}
@@ -97,11 +102,13 @@
 <div class="toolbar">
   <button class="btn-add" onclick="openModal()">+ Novo Deal</button>
   <input class="search-input" type="text" placeholder="🔍 Buscar deal, VIN, vendedor…" oninput="filterDeals(this.value)">
-  <button class="filter-btn active" onclick="setFilter('todos', this)">Todos</button>
+  <button class="filter-btn active" onclick="setFilter('ativos', this)">Ativos</button>
   <button class="filter-btn" onclick="setFilter('pendentes', this)">Pendentes</button>
   <button class="filter-btn" onclick="setFilter('aprovados', this)">Completos</button>
+  <button class="filter-btn" onclick="setFilter('arquivados', this)">Arquivados</button>
   <button class="filter-btn" onclick="setFilter('sem-pg', this)">Comissão pendente</button>
   <button class="filter-btn" onclick="setFilter('alertas', this)">Com alertas</button>
+  <button class="filter-btn" onclick="setFilter('todos', this)">Todos</button>
 </div>
 
 <div class="table-wrap">
@@ -109,6 +116,7 @@
     <thead>
       <tr>
         <th>Data</th>
+        <th class="center">Aging</th>
         <th>Deal</th>
         <th>Veículo / Vendedor</th>
         <th class="center">Review</th>
@@ -127,7 +135,7 @@
       </tr>
     </thead>
     <tbody id="tableBody">
-      <tr class="empty-row"><td colspan="16">Carregando deals…</td></tr>
+      <tr class="empty-row"><td colspan="17">Carregando deals…</td></tr>
     </tbody>
   </table>
 </div>
@@ -211,12 +219,12 @@ const STATUS_TONES = {
 };
 
 let allDeals = [];
-let currentFilter = 'todos';
+let currentFilter = 'ativos';
 let searchTerm = '';
 let editingId = null;
 
 async function loadFromSheets(){
-  document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Carregando…</td></tr>';
+  document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="17">Carregando…</td></tr>';
   try {
     const res = await fetch(`${SCRIPT_URL}?source=DEAL_MASTER`);
     const data = await res.json();
@@ -227,7 +235,7 @@ async function loadFromSheets(){
       throw new Error(data.error || 'Erro ao carregar DEAL_MASTER');
     }
   } catch(e){
-    document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="16">Erro ao carregar DEAL_MASTER / DEAL_ALERTS.</td></tr>';
+    document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="17">Erro ao carregar DEAL_MASTER / DEAL_ALERTS.</td></tr>';
   }
 }
 
@@ -251,6 +259,7 @@ function normalizeDeal(d={}){
     alerts: d.alerts || [],
     alert_count: Number(d.alert_count || (d.alerts||[]).length || 0),
     critical_alert_count: Number(d.critical_alert_count || 0),
+    hub_status: d.hub_status || (d.dmv_status === 'done' ? 'completed' : 'active'),
     review_status: d.review_status || 'pending',
     commission_status: d.commission_status || 'pending',
     dmv_status: d.dmv_status || 'pending',
@@ -285,6 +294,24 @@ function statusSelect(deal, field){
   </select>`;
 }
 
+function agingInfo(deal){
+  if(String(deal.dmv_status || '').toLowerCase() === 'done') return null;
+  const saleDate = toValidDate(deal.data);
+  if(!saleDate) return null;
+  const today = new Date();
+  const start = new Date(saleDate.getFullYear(), saleDate.getMonth(), saleDate.getDate());
+  const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const days = Math.max(0, Math.floor((end - start) / 86400000));
+  const tone = days <= 21 ? 'green' : days <= 45 ? 'yellow' : days <= 60 ? 'orange' : 'red';
+  return { days, tone };
+}
+
+function agingBadge(deal){
+  const aging = agingInfo(deal);
+  if(!aging) return '<span class="aging-badge">—</span>';
+  return `<span class="aging-badge ${aging.tone}" title="${aging.days} dias desde a venda">${aging.days}d</span>`;
+}
+
 function alertBadge(deal){
   const count = deal.alert_count || 0;
   const critical = deal.critical_alert_count || 0;
@@ -299,6 +326,7 @@ function renderRow(deal){
   tr.dataset.id = deal.id;
   tr.innerHTML = `
     <td class="muted">${formatDate(deal.data)}</td>
+    <td class="center">${agingBadge(deal)}</td>
     <td><div class="deal-id">${escapeHtml(deal.dealId || '—')}</div></td>
     <td><div class="deal-veiculo">${escapeHtml(deal.veiculo || '—')}</div><div class="deal-vendedor">${escapeHtml(deal.vendedor || '—')}</div></td>
     ${STATUS_FIELDS.map(field => `<td class="center">${statusSelect(deal, field)}</td>`).join('')}
@@ -318,9 +346,13 @@ function renderTable(){
     const q = searchTerm;
     const matchSearch = !q || [d.dealId,d.vin,d.veiculo,d.vendedor,d.lender,d.deal_type].some(v => String(v||'').toLowerCase().includes(q));
     const complete = STATUS_FIELDS.every(field => isCompleteStatus(d[field]));
+    const completedDeal = isCompletedDeal(d);
+    const archivedDeal = isArchivedDeal(d);
     const matchFilter = currentFilter === 'todos' ? true :
+      currentFilter === 'ativos' ? !completedDeal && !archivedDeal :
       currentFilter === 'pendentes' ? !complete :
-      currentFilter === 'aprovados' ? complete :
+      currentFilter === 'aprovados' ? completedDeal :
+      currentFilter === 'arquivados' ? archivedDeal :
       currentFilter === 'sem-pg' ? !isCompleteStatus(d.commission_status) :
       currentFilter === 'alertas' ? d.alert_count > 0 : true;
     return matchSearch && matchFilter;
@@ -329,7 +361,7 @@ function renderTable(){
   if(filtered.length === 0){
     const tr = document.createElement('tr');
     tr.className = 'empty-row';
-    tr.innerHTML = `<td colspan="16">${allDeals.length === 0 ? 'Nenhum deal encontrado no DEAL_MASTER.' : 'Nenhum deal encontrado.'}</td>`;
+    tr.innerHTML = `<td colspan="17">${allDeals.length === 0 ? 'Nenhum deal encontrado no DEAL_MASTER.' : 'Nenhum deal encontrado.'}</td>`;
     body.appendChild(tr);
   } else {
     filtered.forEach(d => body.appendChild(renderRow(d)));
@@ -339,7 +371,7 @@ function renderTable(){
 
 function updateStats(){
   const total = allDeals.length;
-  const completos = allDeals.filter(d => STATUS_FIELDS.every(field => isCompleteStatus(d[field]))).length;
+  const completos = allDeals.filter(isCompletedDeal).length;
   const criticos = allDeals.filter(d => d.critical_alert_count > 0).length;
   document.getElementById('stat-total').textContent = total + ' total';
   document.getElementById('stat-aprovados').textContent = completos + ' completos';
@@ -352,10 +384,13 @@ async function setMasterStatus(id, field, sel){
   if(!deal) return;
   const oldValue = deal[field] || '';
   deal[field] = sel.value;
+  if(field === 'dmv_status' && sel.value === 'done') deal.hub_status = 'completed';
+  if(field === 'dmv_status' && sel.value !== 'done' && deal.hub_status === 'completed') deal.hub_status = 'active';
   sel.className = `status-select ${statusToneClass(sel.value)}`;
   updateStats();
   const result = await saveToSheets({ action:'updateStatus', deal_id:id, field, value:sel.value });
-  if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${statusToneClass(oldValue)}`; showToast('Erro ao salvar'); return; }
+  if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${statusToneClass(oldValue)}`; renderTable(); showToast('Erro ao salvar'); return; }
+  renderTable();
   showToast('Status atualizado!');
 }
 
@@ -406,6 +441,8 @@ async function saveDeal(){
 }
 
 function isCompleteStatus(value){ return ['approved','paid','sent','done','created','received','electronic','not_needed'].includes(String(value || '').toLowerCase()); }
+function isCompletedDeal(deal){ return String(deal.dmv_status || '').toLowerCase() === 'done' || String(deal.hub_status || '').toLowerCase() === 'completed'; }
+function isArchivedDeal(deal){ return String(deal.hub_status || '').toLowerCase() === 'archived'; }
 function toValidDate(value){
   if(!value) return null;
   if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
