@@ -62,10 +62,38 @@
   .alert-badge{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:20px;padding:3px 8px;font-size:10px;font-family:'DM Mono',monospace;color:var(--text-muted);}
   .alert-badge.has-alerts{border-color:rgba(245,158,11,0.35);background:var(--amber-glow);color:var(--amber);}
   .alert-badge.critical{border-color:rgba(239,68,68,0.45);background:var(--red-glow);color:var(--red);}
+  .deal-link{background:none;border:none;padding:0;cursor:pointer;text-align:left;}
+  .deal-link:hover .deal-id{text-decoration:underline;}
   .empty-row td{text-align:center;padding:48px;color:var(--text-muted);font-size:14px;}
   .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:300;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s ease;}
   .modal-overlay.hidden{display:none;}
   .modal{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px 40px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;animation:slideUp 0.25s ease;}
+  .detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:320;display:flex;justify-content:flex-end;animation:fadeIn 0.2s ease;}
+  .detail-overlay.hidden{display:none;}
+  .detail-panel{width:min(560px,100%);height:100vh;background:var(--surface);border-left:1px solid var(--border);box-shadow:-24px 0 60px rgba(0,0,0,0.35);padding:22px;overflow-y:auto;animation:slideInRight 0.22s ease;}
+  @keyframes slideInRight{from{transform:translateX(100%);}to{transform:translateX(0);}}
+  .detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:18px;}
+  .detail-title{font-size:18px;font-weight:700;margin-bottom:4px;}
+  .detail-sub{font-size:12px;color:var(--text-muted);font-family:'DM Mono',monospace;}
+  .detail-actions{display:flex;align-items:center;gap:8px;}
+  .detail-edit{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:12px;font-family:'DM Sans',sans-serif;padding:7px 10px;cursor:pointer;}
+  .detail-edit:hover{border-color:var(--blue);color:var(--blue-light);}
+  .detail-section{border-top:1px solid var(--border);padding-top:16px;margin-top:16px;}
+  .detail-section-title{font-size:11px;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px;}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .detail-field{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;min-width:0;}
+  .detail-label{font-size:10px;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.05em;}
+  .detail-value{font-size:13px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .detail-status-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .detail-status-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 10px;}
+  .detail-status-name{font-size:11px;color:var(--text-dim);}
+  .detail-list{display:flex;flex-direction:column;gap:8px;}
+  .detail-item{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;}
+  .detail-item.critical{border-color:rgba(239,68,68,0.42);background:var(--red-glow);}
+  .detail-item-title{font-size:13px;font-weight:600;margin-bottom:4px;}
+  .detail-item-meta{font-size:11px;color:var(--text-muted);line-height:1.5;}
+  .detail-empty,.detail-loading,.detail-error{padding:22px;border:1px dashed var(--border);border-radius:var(--radius-sm);color:var(--text-muted);font-size:13px;text-align:center;}
+  .detail-error{border-color:rgba(239,68,68,0.35);color:var(--red);background:var(--red-glow);}
   @keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
   @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
   .modal-title{font-size:16px;font-weight:700;margin-bottom:4px;}
@@ -80,6 +108,10 @@
   .btn-save:hover{opacity:0.9;}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:white;padding:10px 20px;border-radius:var(--radius);font-size:13px;font-weight:600;z-index:400;display:none;animation:fadeIn 0.2s ease;}
   .toast.show{display:block;}
+  @media (max-width:640px){
+    .detail-panel{padding:18px 14px;}
+    .detail-grid,.detail-status-grid{grid-template-columns:1fr;}
+  }
 </style>
 </head>
 <body>
@@ -157,6 +189,12 @@
   </div>
 </div>
 
+<div class="detail-overlay hidden" id="detailOverlay" onclick="closeDealDetailsOutside(event)">
+  <aside class="detail-panel" aria-label="Detalhes do deal">
+    <div id="detailContent"></div>
+  </aside>
+</div>
+
 <div class="toast" id="toast">✓ Salvo!</div>
 
 <script>
@@ -222,6 +260,7 @@ let allDeals = [];
 let currentFilter = 'ativos';
 let searchTerm = '';
 let editingId = null;
+let detailState = { id: null, deal: null, alerts: [], history: [], documents: [], loading: false };
 
 async function loadFromSheets(){
   document.getElementById('tableBody').innerHTML = '<tr class="empty-row"><td colspan="17">Carregando…</td></tr>';
@@ -327,14 +366,14 @@ function renderRow(deal){
   tr.innerHTML = `
     <td class="muted">${formatDate(deal.data)}</td>
     <td class="center">${agingBadge(deal)}</td>
-    <td><div class="deal-id">${escapeHtml(deal.dealId || '—')}</div></td>
+    <td><button class="deal-link" onclick="openDealDetails('${deal.id}')"><span class="deal-id">${escapeHtml(deal.dealId || '—')}</span></button></td>
     <td><div class="deal-veiculo">${escapeHtml(deal.veiculo || '—')}</div><div class="deal-vendedor">${escapeHtml(deal.vendedor || '—')}</div></td>
     ${STATUS_FIELDS.map(field => `<td class="center">${statusSelect(deal, field)}</td>`).join('')}
     <td class="center">${alertBadge(deal)}</td>
     <td class="center muted">${escapeHtml(deal.lender || '—')}</td>
     <td class="center muted">${escapeHtml(deal.deal_type || '—')}</td>
     <td class="center muted">${escapeHtml(deal.gps_required || '—')}</td>
-    <td class="center"><button onclick="editDeal('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Editar">✏️</button></td>
+    <td class="center"><button onclick="openDealDetails('${deal.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;padding:4px;" title="Detalhes">✏️</button></td>
   `;
   return tr;
 }
@@ -392,6 +431,205 @@ async function setMasterStatus(id, field, sel){
   if(!result.success){ deal[field] = oldValue; sel.value = oldValue; sel.className = `status-select ${statusToneClass(oldValue)}`; renderTable(); showToast('Erro ao salvar'); return; }
   renderTable();
   showToast('Status atualizado!');
+}
+
+async function openDealDetails(id){
+  const localDeal = allDeals.find(d=>d.id===id) || null;
+  detailState = { id, deal: localDeal, alerts: localDeal ? (localDeal.alerts || []) : [], history: [], documents: [], loading: true };
+  document.getElementById('detailOverlay').classList.remove('hidden');
+  renderDealDetails();
+
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getDealDetails&deal_id=${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if(!data.success) throw new Error(data.error || 'Erro ao carregar detalhes');
+    const detailDeal = normalizeDeal({ ...(data.deal || {}), alerts: data.alerts || [] });
+    const existingIndex = allDeals.findIndex(d=>d.id===detailDeal.id);
+    if(existingIndex >= 0) allDeals[existingIndex] = { ...allDeals[existingIndex], ...detailDeal };
+    detailState = {
+      id,
+      deal: detailDeal,
+      alerts: data.alerts || [],
+      history: data.history || [],
+      documents: data.documents || [],
+      loading: false,
+    };
+  } catch(e) {
+    detailState = { ...detailState, loading: false, error: e.message || 'Erro ao carregar detalhes' };
+  }
+  renderDealDetails();
+}
+
+function renderDealDetails(){
+  const el = document.getElementById('detailContent');
+  if(!el) return;
+
+  if(detailState.loading && !detailState.deal){
+    el.innerHTML = `<button class="modal-close" onclick="closeDealDetails()">×</button><div class="detail-loading">Carregando detalhes do deal...</div>`;
+    return;
+  }
+
+  const deal = detailState.deal;
+  if(!deal){
+    el.innerHTML = `<button class="modal-close" onclick="closeDealDetails()">×</button><div class="detail-error">${escapeHtml(detailState.error || 'Deal nao encontrado.')}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">Deal ${escapeHtml(deal.dealId || deal.id || '—')}</div>
+        <div class="detail-sub">${escapeHtml(deal.veiculo || 'Veiculo nao informado')}</div>
+      </div>
+      <div class="detail-actions">
+        <button class="detail-edit" onclick="editDealFromDetails()">Editar base</button>
+        <button class="modal-close" onclick="closeDealDetails()">×</button>
+      </div>
+    </div>
+    ${detailState.loading ? '<div class="detail-loading">Atualizando informacoes...</div>' : ''}
+    ${detailState.error ? `<div class="detail-error">${escapeHtml(detailState.error)}</div>` : ''}
+    <div class="detail-section">
+      <div class="detail-section-title">Informacoes gerais</div>
+      <div class="detail-grid">
+        ${detailField('Deal ID', deal.deal_id || deal.dealId)}
+        ${detailField('Veiculo', deal.vehicle || deal.veiculo)}
+        ${detailField('Vendedor', deal.seller || deal.vendedor)}
+        ${detailField('Cliente', deal.customer_name)}
+        ${detailField('Data', formatDate(deal.sale_date || deal.data))}
+        ${detailField('Lender', deal.lender)}
+        ${detailField('Tipo', deal.deal_type)}
+        ${detailField('GPS', deal.gps_required)}
+        ${detailField('Parcelado', deal.parcelado)}
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Status operacionais</div>
+      <div class="detail-status-grid">
+        ${STATUS_FIELDS.map(field => `
+          <div class="detail-status-row">
+            <span class="detail-status-name">${escapeHtml(statusFieldLabel(field))}</span>
+            ${detailStatusSelect(deal, field)}
+          </div>
+        `).join('')}
+      </div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Alertas ativos</div>
+      ${renderAlerts(detailState.alerts)}
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Historico</div>
+      ${renderHistory(detailState.history)}
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Documentos</div>
+      ${renderDocuments(detailState.documents)}
+    </div>
+  `;
+}
+
+function detailField(label, value){
+  return `<div class="detail-field"><div class="detail-label">${escapeHtml(label)}</div><div class="detail-value" title="${escapeAttr(value || '—')}">${escapeHtml(value || '—')}</div></div>`;
+}
+
+function detailStatusSelect(deal, field){
+  const value = deal[field] || '';
+  return `<select class="status-select ${statusToneClass(value)}" onchange="setDetailStatus('${deal.id}','${field}',this)">
+    ${statusOptions(field, value).map(([internal, label]) => `<option value="${internal}" ${value===internal?'selected':''}>${label}</option>`).join('')}
+  </select>`;
+}
+
+async function setDetailStatus(id, field, sel){
+  const deal = allDeals.find(d=>d.id===id);
+  const detailDeal = detailState.deal;
+  const target = detailDeal || deal;
+  if(!target) return;
+  const oldValue = target[field] || '';
+  target[field] = sel.value;
+  if(deal) deal[field] = sel.value;
+  if(field === 'dmv_status' && sel.value === 'done'){
+    target.hub_status = 'completed';
+    if(deal) deal.hub_status = 'completed';
+  }
+  if(field === 'dmv_status' && sel.value !== 'done' && target.hub_status === 'completed'){
+    target.hub_status = 'active';
+    if(deal) deal.hub_status = 'active';
+  }
+  sel.className = `status-select ${statusToneClass(sel.value)}`;
+  updateStats();
+
+  const result = await saveToSheets({ action:'updateStatus', deal_id:id, field, value:sel.value });
+  if(!result.success){
+    target[field] = oldValue;
+    if(deal) deal[field] = oldValue;
+    sel.value = oldValue;
+    sel.className = `status-select ${statusToneClass(oldValue)}`;
+    renderTable();
+    renderDealDetails();
+    showToast('Erro ao salvar');
+    return;
+  }
+  renderTable();
+  showToast('Status atualizado!');
+}
+
+function renderAlerts(alerts=[]){
+  if(!alerts.length) return '<div class="detail-empty">Nenhum alerta ativo.</div>';
+  return `<div class="detail-list">${alerts.map(alert => `
+    <div class="detail-item ${isCriticalPriority(alert.priority) ? 'critical' : ''}">
+      <div class="detail-item-title">${escapeHtml(alert.alert_type || 'Alerta')}</div>
+      <div class="detail-item-meta">Prioridade: ${escapeHtml(alert.priority || '—')} · Status: ${escapeHtml(alert.status || '—')} · Criado: ${formatDateTime(alert.created_at)}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderHistory(history=[]){
+  if(!history.length) return '<div class="detail-empty">Nenhum evento registrado.</div>';
+  return `<div class="detail-list">${history.map(item => `
+    <div class="detail-item">
+      <div class="detail-item-title">${escapeHtml(item.action || 'Evento')}</div>
+      <div class="detail-item-meta">Usuario: ${escapeHtml(item.user || '—')} · ${formatDateTime(item.timestamp)}</div>
+      <div class="detail-item-meta">${escapeHtml(item.notes || '')}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderDocuments(documents=[]){
+  if(!documents.length) return '<div class="detail-empty">Nenhum documento encontrado.</div>';
+  return `<div class="detail-list">${documents.map(doc => `
+    <div class="detail-item">
+      <div class="detail-item-title">${escapeHtml(doc.document_name || 'Documento')}</div>
+      <div class="detail-item-meta">Impresso: ${escapeHtml(doc.printed_status || '—')} · DealerCenter: ${escapeHtml(doc.dealer_center_status || '—')} · Status: ${escapeHtml(doc.status || '—')}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function statusFieldLabel(field){
+  return {
+    review_status: 'Review',
+    commission_status: 'Comissao',
+    dmv_status: 'DMV',
+    parcelamento_status: 'Parcelamento',
+    title_status: 'Title',
+    omnia_status: 'OMNIA',
+    folder_status: 'Folder',
+    envelope_status: 'Envelope',
+  }[field] || field;
+}
+
+function editDealFromDetails(){
+  const id = detailState.id;
+  closeDealDetails();
+  editDeal(id);
+}
+
+function closeDealDetails(){
+  document.getElementById('detailOverlay').classList.add('hidden');
+  detailState = { id: null, deal: null, alerts: [], history: [], documents: [], loading: false };
+}
+
+function closeDealDetailsOutside(e){
+  if(e.target===document.getElementById('detailOverlay')) closeDealDetails();
 }
 
 function setFilter(f, btn){
@@ -463,6 +701,14 @@ function formatDate(value){
   const date = toValidDate(value);
   return date ? date.toLocaleDateString('en-US',{month:'2-digit',day:'2-digit',year:'numeric'}) : '—';
 }
+function formatDateTime(value){
+  if(!value) return '—';
+  const parsed = value instanceof Date ? value : new Date(String(value));
+  if(!Number.isNaN(parsed.getTime())) {
+    return parsed.toLocaleString('en-US',{month:'2-digit',day:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  }
+  return formatDate(value);
+}
 function toDateInputValue(value){
   const date = toValidDate(value);
   if(!date) return '';
@@ -471,6 +717,7 @@ function toDateInputValue(value){
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+function isCriticalPriority(value){ return ['critical','critico','crítico','high','alta'].includes(String(value || '').toLowerCase()); }
 function escapeHtml(value){ return String(value).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function escapeAttr(value){ return escapeHtml(value).replace(/\n/g, '&#10;'); }
 function showToast(msg='✓ Salvo!'){
