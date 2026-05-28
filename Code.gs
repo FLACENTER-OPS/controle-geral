@@ -3,7 +3,7 @@ const DEAL_MASTER_HEADERS = [
   'lender', 'deal_type', 'trade_in', 'gps_required', 'parcelado', 'out_of_state',
   'company_deal', 'review_status', 'commission_status', 'dmv_status',
   'parcelamento_status', 'title_status', 'omnia_status', 'folder_status',
-  'envelope_status', 'created_at', 'updated_at'
+  'envelope_status', 'created_at', 'updated_at', 'hub_status'
 ];
 
 const DEAL_ALERTS_HEADERS = [
@@ -137,6 +137,15 @@ function updateDealMasterStatus(masterSheet, historySheet, payload) {
 
   const column = DEAL_MASTER_HEADERS.indexOf(field) + 1;
   masterSheet.getRange(row, column).setValue(payload.value || '');
+  if (field === 'dmv_status') {
+    const hubStatusColumn = DEAL_MASTER_HEADERS.indexOf('hub_status') + 1;
+    const currentHubStatus = String(masterSheet.getRange(row, hubStatusColumn).getValue() || '').toLowerCase();
+    if (payload.value === 'done') {
+      masterSheet.getRange(row, hubStatusColumn).setValue('completed');
+    } else if (currentHubStatus === 'completed') {
+      masterSheet.getRange(row, hubStatusColumn).setValue('active');
+    }
+  }
   masterSheet.getRange(row, DEAL_MASTER_HEADERS.indexOf('updated_at') + 1).setValue(new Date().toISOString());
   appendHistory(historySheet, dealId, 'update_status', payload.user || '', field + ' = ' + (payload.value || ''));
 }
@@ -175,6 +184,7 @@ function upsertDealMaster(masterSheet, historySheet, payload) {
     envelope_status: pick(payload.envelope_status, existingByHeader.envelope_status),
     created_at: existingByHeader.created_at || now,
     updated_at: now,
+    hub_status: pick(payload.hub_status, existingByHeader.hub_status, payload.dmv_status === 'done' ? 'completed' : 'active'),
   };
 
   const values = DEAL_MASTER_HEADERS.map(header => merged[header] || '');
