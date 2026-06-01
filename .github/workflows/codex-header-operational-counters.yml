@@ -1,0 +1,66 @@
+name: Codex header operational counters fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-header-operational-counters.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch header counters
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('index.html')
+          html = path.read_text(encoding='utf-8')
+
+          html = html.replace('0 completos', '0 ativos')
+          html = html.replace('0 total operacional operacional', '0 total operacional')
+          html = html.replace('0 total', '0 total operacional')
+
+          def replace_filter(match):
+              name = match.group(1)
+              return "function "+name+"(d){const done=isCompletedDeal(d),arch=isArchivedDeal(d),aging=agingInfo(d),health=String(d.health_score||'').toLowerCase();return currentFilter==='todos'||currentFilter==='ativos'&&isActiveDeal(d)||currentFilter==='pendentes'&&isPendingDeal(d)||currentFilter==='aprovados'&&done||currentFilter==='arquivados'&&arch||currentFilter==='sem-pg'&&isActiveDeal(d)&&!isDealStatusComplete(d.commission_status)||currentFilter==='alertas'&&isActiveDeal(d)&&d.alert_count>0||currentFilter==='risk'&&isActiveDeal(d)&&(health==='risk'||aging&&aging.days>=46&&aging.days<=60)||currentFilter==='dmv-pending'&&isActiveDeal(d)&&String(d.dmv_status||'').toLowerCase()==='pending'||currentFilter==='parcelamento-pending'&&isActiveDeal(d)&&['sim','yes','true'].includes(String(d.parcelado||'').toLowerCase())&&String(d.parcelamento_status||'').toLowerCase()!=='created'||currentFilter==='aging-60'&&isActiveDeal(d)&&aging&&aging.days>60||currentFilter==='docs-critical'&&isActiveDeal(d)&&d.critical_alert_count>0}"
+
+          html, n = re.subn(r"function (matchesCurrentFilter|matchFilter)\(d\)\{.*?\}", replace_filter, html, count=1)
+          if n != 1:
+              raise SystemExit('filter function replacement failed')
+
+          new_update = "function updateStats(){const operationalDeals=allDeals.filter(isActiveDeal),active=operationalDeals.length,pending=operationalDeals.filter(isPendingDeal).length,critical=operationalDeals.filter(isCriticalDeal).length;setStatText('stat-total',active+' total operacional');setStatText('sTotal',active+' total operacional');setStatText('stat-aprovados',active+' ativos');setStatText('sComplete',active+' ativos');setStatText('stat-pendentes',pending+' pendentes');setStatText('sPending',pending+' pendentes');setStatText('stat-alertas',critical+' críticos');setStatText('sCritical',critical+' críticos')}function setStatText(id,text){const el=document.getElementById(id);if(el)el.textContent=text}"
+          html, n = re.subn(r"function updateStats\(\)\{.*?\}", new_update, html, count=1)
+          if n != 1:
+              raise SystemExit('updateStats replacement failed')
+
+          helpers = "function isDealStatusComplete(v){return['approved','paid','sent','done','created','received','electronic','not_needed'].includes(String(v||'').toLowerCase())}function isArchivedDeal(d){return String(d.hub_status||'').toLowerCase()==='archived'}function isCompletedDeal(d){return String(d.dmv_status||'').toLowerCase()==='done'||String(d.hub_status||'').toLowerCase()==='completed'}function isActiveDeal(d){return !isArchivedDeal(d)&&!isCompletedDeal(d)}function isPendingDeal(d){return isActiveDeal(d)&&!STATUS_FIELDS.every(f=>isDealStatusComplete(d[f]))}function isCriticalDeal(d){return isActiveDeal(d)&&(String(d.health_score||'').toLowerCase()==='critical'||Number(d.critical_alert_count||0)>0)}"
+          if 'function isDealStatusComplete' not in html:
+              marker = 'const toastEl=document.getElementById'
+              if marker not in html:
+                  raise SystemExit('helper insertion marker not found')
+              html = html.replace(marker, helpers + marker, 1)
+
+          path.write_text(html, encoding='utf-8')
+          PY
+      - name: Validate index script
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('index.html','utf8');
+          const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n');
+          new Function(scripts);
+          NODE
+      - name: Commit fix and remove workflow
+        run: |
+          rm -f .github/workflows/codex-header-operational-counters.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/codex-header-operational-counters.yml
+          git commit -m "Fix header operational counters"
+          git push
