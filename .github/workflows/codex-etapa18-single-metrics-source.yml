@@ -1,0 +1,65 @@
+name: Codex Etapa 18 Single Metrics Source
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-etapa18-single-metrics-source.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch Code.gs and index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          code_path = Path('Code.gs')
+          code = code_path.read_text(encoding='utf-8')
+          start = code.index('function buildDashboardMetrics(')
+          end = code.index('function buildStatusMetrics(', start)
+          new_build = "function buildDashboardMetrics(deals,alerts,docs,returns){const active=deals.filter(d=>!isCompletedMasterDeal(d)&&!isArchivedMasterDeal(d)),completed=deals.filter(isCompletedMasterDeal),activeIds=active.reduce((a,d)=>(a[String(d.deal_id)]=true,a),{}),operationalAlerts=alerts.filter(a=>activeIds[String(a.deal_id)]),operationalDocs=docs.filter(d=>activeIds[String(d.deal_id)]),aging=active.map(d=>getAgingInfo(d.sale_date)).filter(Boolean),alertsByDeal=groupBy(operationalAlerts,'deal_id'),docsByDeal=groupBy(operationalDocs,'deal_id'),healthItems=active.map(d=>{const al=alertsByDeal[String(d.deal_id)]||[],ag=val(d.dmv_status)==='done'?null:getAgingInfo(d.sale_date);return{deal:d,aging:ag,health:calculateDashboardHealth(al,ag)}}),hc=countBy(healthItems,'health'),docCounts=countDocumentStatuses(operationalDocs),ranges={ok:0,attention:0,risk:0,critical:0};aging.forEach(x=>ranges[slaRange(x.days)]++);const dmvSla=buildDmvSlaMetrics(active),actionCenter=buildActionCenter(deals,alerts,docs,returns),sellerLeaderboard=buildSellerLeaderboard(active,alertsByDeal,docsByDeal),alertTypes=countBy(operationalAlerts,'alert_type'),alertPriorities=countBy(operationalAlerts,'priority'),completeDocDeals=active.filter(d=>calculateDealDocumentStatus(docsByDeal[String(d.deal_id)]||[])==='complete').length,summary={activeDeals:active.length,pendingDeals:active.filter(isPendingMasterDeal).length,criticalDeals:hc.critical||0,riskDeals:hc.risk||0,totalOperational:active.length,dmvPending:active.filter(d=>val(d.dmv_status)==='pending').length,dmvOverdue:dmvSla.overdue||0,parcelamentosPending:active.filter(isPendingParcelamento).length,criticalDocuments:docCounts.critical,aging60:aging.filter(x=>x.days>60).length,commissionPending:active.filter(d=>val(d.commission_status)==='pending').length,withDispatcher:dmvSla.with_dispatcher||0,completedDeals:completed.length};return{summary,health:{ok:hc.ok||0,attention:hc.attention||0,risk:hc.risk||0,critical:hc.critical||0,okPercent:percent(hc.ok||0,active.length),attentionPercent:percent(hc.attention||0,active.length),riskPercent:percent(hc.risk||0,active.length),criticalPercent:percent(hc.critical||0,active.length),openAlerts:operationalAlerts.length,averageAlertsPerActiveDeal:round(operationalAlerts.length/Math.max(active.length,1),1)},sla:{activeAverageAging:average(aging.map(x=>x.days)),completedAverageDays:0,ranges,over60:ranges.critical||0},alerts:{totalOpen:operationalAlerts.length,byType:objectToPairs(alertTypes),byPriority:objectToPairs(alertPriorities),topUrgent:operationalAlerts.slice(0,5)},documents:{ok:docCounts.ok,pending:docCounts.pending,critical:docCounts.critical,completePercent:percent(completeDocDeals,active.length),topPending:objectToPairs(countPendingDocuments(operationalDocs)).slice(0,5)},dmv:buildStatusMetrics(active,'dmv_status'),dmvSla,parcelamentos:{parceladoSim:active.filter(isParceladoSim).length,pending:active.filter(d=>val(d.parcelamento_status)==='pending').length,created:active.filter(d=>val(d.parcelamento_status)==='created').length,critical:active.filter(isPendingParcelamento).length},commission:{pending:active.filter(d=>val(d.commission_status)==='pending').length,blocked:active.filter(d=>val(d.commission_status)==='blocked').length,approved:active.filter(d=>val(d.commission_status)==='approved').length,paid:active.filter(d=>val(d.commission_status)==='paid').length,pendingCriticalDeal:healthItems.filter(i=>i.health==='critical'&&val(i.deal.commission_status)==='pending').length,approvedCriticalDocs:healthItems.filter(i=>(docsByDeal[String(i.deal.deal_id)]||[]).some(d=>hasCriticalDocument([d]))&&val(i.deal.commission_status)==='approved').length,paidCriticalAlert:healthItems.filter(i=>(alertsByDeal[String(i.deal.deal_id)]||[]).some(a=>hasCriticalHealthAlert([a]))&&val(i.deal.commission_status)==='paid').length},sellerLeaderboard,actionCenter,charts:{healthScore:[{label:'OK',value:hc.ok||0},{label:'Atencao',value:hc.attention||0},{label:'Risco',value:hc.risk||0},{label:'Critico',value:hc.critical||0}],agingDistribution:[{label:'0-21',value:aging.filter(x=>x.days<=21).length},{label:'22-45',value:aging.filter(x=>x.days>21&&x.days<=45).length},{label:'46-60',value:aging.filter(x=>x.days>45&&x.days<=60).length},{label:'60+',value:aging.filter(x=>x.days>60).length}],alertsByType:objectToPairs(alertTypes).slice(0,8),dmvStatus:['pending','with_dispatcher','sent','rejected','resubmission_needed','done'].map(s=>({label:s,value:active.filter(d=>val(d.dmv_status)===s).length})),sellerPending:sellerLeaderboard.slice(0,8).map(i=>({label:i.seller,value:i.alerts+i.criticalDocuments}))}}}\n"
+          code = code[:start] + new_build + code[end:]
+          old = "function isCompletedMasterDeal(d){return val(d.dmv_status)==='done'||val(d.hub_status)==='completed'}function isArchivedMasterDeal(d){return val(d.hub_status)==='archived'}function isParceladoSim(d){return['sim','yes','true'].includes(val(d.parcelado))}"
+          new = "function isCompletedMasterDeal(d){return val(d.dmv_status)==='done'||val(d.hub_status)==='completed'}function isArchivedMasterDeal(d){return val(d.hub_status)==='archived'}function isPendingMasterDeal(d){return !(STATUS_FIELDS||[]).every(f=>isMasterStatusComplete(d[f]))}function isMasterStatusComplete(v){return['approved','paid','sent','done','created','received','electronic','not_needed'].includes(val(v))}function isParceladoSim(d){return['sim','yes','true'].includes(val(d.parcelado))}"
+          if old not in code:
+              raise SystemExit('master status helper target not found')
+          code = code.replace(old, new, 1)
+          code_path.write_text(code, encoding='utf-8')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+          html = html.replace("let allDeals=[],currentFilter='ativos',searchTerm='',dmvConfig=", "let allDeals=[],currentFilter='ativos',searchTerm='',dashboardMetrics=null,dmvConfig=", 1)
+          old = "async function loadDashboard(){try{const d=await(await fetch(`${SCRIPT_URL}?action=getDashboardMetrics`)).json();renderDashboard(d.success?d:{})}catch(e){renderDashboard({})}}"
+          new = "async function loadDashboard(){try{const d=await(await fetch(`${SCRIPT_URL}?action=getDashboardMetrics`)).json();if(!d.success)throw Error(d.error||'Erro');dashboardMetrics=d;renderHeaderStats(d.summary||{});renderDashboard(d)}catch(e){dashboardMetrics=null;renderHeaderStats(null,e.message||'Erro');homeView.innerHTML=`<div class=\"empty\">Erro ao carregar dashboard. ${esc(e.message||'')}</div>`}}"
+          if old not in html:
+              raise SystemExit('loadDashboard target not found')
+          html = html.replace(old, new, 1)
+          old = "function updateStats(){const operationalDeals=allDeals.filter(isActiveDeal),active=operationalDeals.length,pending=operationalDeals.filter(isPendingDeal).length,critical=operationalDeals.filter(isCriticalDeal).length;setStatText('stat-total',active+' total operacional');setStatText('sTotal',active+' total operacional');setStatText('stat-aprovados',active+' ativos');setStatText('sComplete',active+' ativos');setStatText('stat-pendentes',pending+' pendentes');setStatText('sPending',pending+' pendentes');setStatText('stat-alertas',critical+' críticos');setStatText('sCritical',critical+' críticos')}"
+          new = "function updateStats(){if(dashboardMetrics&&dashboardMetrics.summary)renderHeaderStats(dashboardMetrics.summary)}function renderHeaderStats(summary,error){if(error){setStatText('stat-total','erro métricas');setStatText('sTotal','erro métricas');setStatText('stat-aprovados','erro dashboard');setStatText('sComplete','erro dashboard');setStatText('stat-pendentes','erro métricas');setStatText('sPending','erro métricas');setStatText('stat-alertas','erro métricas');setStatText('sCritical','erro métricas');return}if(!summary)return;setStatText('stat-total',n(summary.totalOperational)+' total operacional');setStatText('sTotal',n(summary.totalOperational)+' total operacional');setStatText('stat-aprovados',n(summary.activeDeals)+' ativos');setStatText('sComplete',n(summary.activeDeals)+' ativos');setStatText('stat-pendentes',n(summary.pendingDeals)+' pendentes');setStatText('sPending',n(summary.pendingDeals)+' pendentes');setStatText('stat-alertas',n(summary.criticalDeals)+' críticos');setStatText('sCritical',n(summary.criticalDeals)+' críticos')}"
+          if old not in html:
+              raise SystemExit('updateStats target not found')
+          html = html.replace(old, new, 1)
+          html_path.write_text(html, encoding='utf-8')
+          PY
+      - name: Validate syntax
+        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('Code.gs','utf8')); new Function(fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1]); console.log('Code.gs and index.html OK')"
+      - name: Commit patched files
+        run: |
+          git config user.name codex
+          git config user.email codex@openai.com
+          git add Code.gs index.html
+          git commit -m "Etapa 18 - Unifica contadores no Dashboard"
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/codex-etapa18-single-metrics-source.yml
+          git add .github/workflows/codex-etapa18-single-metrics-source.yml
+          git commit --amend --no-edit
+      - name: Push final commit
+        run: git push
