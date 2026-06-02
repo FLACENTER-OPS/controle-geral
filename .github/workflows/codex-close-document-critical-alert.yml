@@ -1,0 +1,48 @@
+name: Codex close document critical alert
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-close-document-critical-alert.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch document alert health sync
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('Code.gs')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("if(hasCriticalDocument(docs))ensureOpenAlert(alerts,id,'Documento critico','critical','open',now);", "const hasCriticalDocs=hasCriticalDocument(docs);if(hasCriticalDocs)ensureOpenAlert(alerts,id,'Documento critico','critical','open',now);else if(closeAlertsByTypes(alerts,id,['Documento critico','Documento crítico'],now)>0)appendHistory(ensureSheet(ss,'DEAL_HISTORY',DEAL_HISTORY_HEADERS),id,'sync_deal_health','','Documento crítico resolvido automaticamente');")
+          s=s.replace("if (hasCriticalDocument(documents)) {\n    ensureOpenAlert(alertsSheet, dealId, 'Documento critico', 'critical', 'open', now);\n  }", "const hasCriticalDocs = hasCriticalDocument(documents);\n  if (hasCriticalDocs) {\n    ensureOpenAlert(alertsSheet, dealId, 'Documento critico', 'critical', 'open', now);\n  } else if (closeAlertsByTypes(alertsSheet, dealId, ['Documento critico', 'Documento crítico'], now) > 0) {\n    appendHistory(historySheet, dealId, 'sync_deal_health', '', 'Documento crítico resolvido automaticamente');\n  }")
+          # Make closeAlertsByTypes return a count, in both compact and expanded variants.
+          s=s.replace("function closeAlertsByTypes(sh,id,types,now){const v=sh.getDataRange().getValues(),h=getHeaders(sh);for(let i=1;i<v.length;i++){const a=rowToObject(h,v[i]);if(String(a.deal_id)===String(id)&&types.includes(String(a.alert_type))&&!isResolvedAlert(a)){setCell(sh,i+1,h,'status','resolved');setCell(sh,i+1,h,'resolved_at',now||new Date().toISOString())}}}", "function closeAlertsByTypes(sh,id,types,now){const v=sh.getDataRange().getValues(),h=getHeaders(sh);let closed=0;for(let i=1;i<v.length;i++){const a=rowToObject(h,v[i]);if(String(a.deal_id)===String(id)&&types.includes(String(a.alert_type))&&!isResolvedAlert(a)){setCell(sh,i+1,h,'status','resolved');setCell(sh,i+1,h,'resolved_at',now||new Date().toISOString());closed++}}return closed}")
+          s=s.replace("function closeAlertsByTypes(sheet, dealId, alertTypes, now) {\n  const values = sheet.getDataRange().getValues();\n  for (let i = 1; i < values.length; i++) {\n    const alert = rowToObject(DEAL_ALERTS_HEADERS, values[i]);\n    if (String(alert.deal_id) === String(dealId) && alertTypes.includes(String(alert.alert_type)) && !isResolvedAlert(alert)) {\n      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('status') + 1).setValue('resolved');\n      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('resolved_at') + 1).setValue(now || new Date().toISOString());\n    }\n  }\n}", "function closeAlertsByTypes(sheet, dealId, alertTypes, now) {\n  const values = sheet.getDataRange().getValues();\n  let closed = 0;\n  for (let i = 1; i < values.length; i++) {\n    const alert = rowToObject(DEAL_ALERTS_HEADERS, values[i]);\n    if (String(alert.deal_id) === String(dealId) && alertTypes.includes(String(alert.alert_type)) && !isResolvedAlert(alert)) {\n      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('status') + 1).setValue('resolved');\n      sheet.getRange(i + 1, DEAL_ALERTS_HEADERS.indexOf('resolved_at') + 1).setValue(now || new Date().toISOString());\n      closed++;\n    }\n  }\n  return closed;\n}")
+          s=s.replace("function calculateDocumentStatus(printedStatus,dealerCenterStatus){const printed=String(printedStatus||'pending').toLowerCase(),dealerCenter=String(dealerCenterStatus||'pending').toLowerCase();if(printed==='missing'||dealerCenter==='missing')return'critical';if(['ok','na','waived'].includes(printed)&&['ok','na','waived'].includes(dealerCenter))return'ok';return'pending'}", "function calculateDocumentStatus(printedStatus,dealerCenterStatus){const printed=String(printedStatus||'pending').toLowerCase(),dealerCenter=String(dealerCenterStatus||'pending').toLowerCase();if(printed==='missing'||dealerCenter==='missing')return'critical';if(['pending','pendente'].includes(printed)||['pending','pendente'].includes(dealerCenter))return'pending';if(printed==='waived'||dealerCenter==='waived')return'waived';if(printed==='na'||dealerCenter==='na')return'na';if(printed==='ok'&&dealerCenter==='ok')return'ok';return'pending'}")
+          s=s.replace("function calculateDocumentStatus(printedStatus, dealerCenterStatus) {\n  const printed = String(printedStatus || 'pending').toLowerCase();\n  const dealerCenter = String(dealerCenterStatus || 'pending').toLowerCase();\n  if (printed === 'missing' || dealerCenter === 'missing') return 'critical';\n  const nonBlocking = ['ok', 'na', 'waived'];\n  if (nonBlocking.includes(printed) && nonBlocking.includes(dealerCenter)) return 'ok';\n  return 'pending';\n}", "function calculateDocumentStatus(printedStatus, dealerCenterStatus) {\n  const printed = String(printedStatus || 'pending').toLowerCase();\n  const dealerCenter = String(dealerCenterStatus || 'pending').toLowerCase();\n  if (printed === 'missing' || dealerCenter === 'missing') return 'critical';\n  if (printed === 'pending' || dealerCenter === 'pending' || printed === 'pendente' || dealerCenter === 'pendente') return 'pending';\n  if (printed === 'waived' || dealerCenter === 'waived') return 'waived';\n  if (printed === 'na' || dealerCenter === 'na') return 'na';\n  if (printed === 'ok' && dealerCenter === 'ok') return 'ok';\n  return 'pending';\n}")
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate files
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          new Function(fs.readFileSync('Code.gs','utf8'));
+          const html=fs.readFileSync('index.html','utf8');
+          const scripts=[...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).join('\n');
+          new Function(scripts);
+          NODE
+      - name: Commit fix and remove workflow
+        run: |
+          rm -f .github/workflows/codex-close-document-critical-alert.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Code.gs .github/workflows/codex-close-document-critical-alert.yml
+          git commit -m "Etapa 16 - Fecha alerta de documento critico automaticamente"
+          git push
