@@ -1,0 +1,69 @@
+name: Codex Etapa 17 Dashboard GPS
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-etapa17-dashboard-gps.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch Code.gs and index.html
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          code_path = Path('Code.gs')
+          code = code_path.read_text(encoding='utf-8')
+          old = "criticalDocuments+=docs.filter(hasCriticalDocument).length"
+          new = "criticalDocuments+=docs.filter(d=>hasCriticalDocument([d])).length"
+          if old not in code:
+              raise SystemExit('backend seller leaderboard target not found')
+          code = code.replace(old, new, 1)
+          code_path.write_text(code, encoding='utf-8')
+
+          html_path = Path('index.html')
+          html = html_path.read_text(encoding='utf-8')
+
+          old = "${field('GPS',d.gps_required)}${field('Parcelado',d.parcelado)}"
+          new = "${field('GPS Exigido',gpsRequiredLabel(d.gps_required))}${field('GPS Status Atual',gpsCurrentStatus())}${field('Parcelado',d.parcelado)}"
+          if old not in html:
+              raise SystemExit('GPS detail field target not found')
+          html = html.replace(old, new, 1)
+
+          old = "function field(l,v){return`<div class=\"field\"><div class=\"field-label\">${esc(l)}</div><div class=\"field-value\">${esc(v||'—')}</div></div>`}"
+          new = "function field(l,v){return`<div class=\"field\"><div class=\"field-label\">${esc(l)}</div><div class=\"field-value\">${esc(v||'—')}</div></div>`}function gpsRequiredLabel(v){const s=String(v||'').toLowerCase();return{sim:'Sim',yes:'Sim',true:'Sim',nao:'Não',no:'Não',false:'Não',financeira:'Financeira',flacenter:'FlaCenter'}[s]||v||'—'}function gpsCurrentStatus(){const docs=(detailState.documents||[]).filter(d=>String(d.document_name||'').toLowerCase().includes('gps'));if(!docs.length)return'—';const st=docs.map(d=>calcDoc(d.printed_status,d.dealer_center_status||d.dealercenter_status));if(st.some(s=>s==='critical'))return'Crítico';if(st.some(s=>s==='pending'))return'Pendente';if(st.every(s=>s==='waived')||st.some(s=>s==='waived'))return'Dispensado';if(st.every(s=>s==='na')||st.some(s=>s==='na'))return'N/A';if(st.every(s=>s==='ok'))return'OK';return'Pendente'}"
+          if old not in html:
+              raise SystemExit('field helper target not found')
+          html = html.replace(old, new, 1)
+
+          old = "function calcDoc(p,d){p=String(p||'pending').toLowerCase();d=String(d||'pending').toLowerCase();if(p==='missing'||d==='missing')return'critical';if(['ok','na','waived'].includes(p)&&['ok','na','waived'].includes(d))return'ok';return'pending'}function docSummary(d){return d.reduce((a,x)=>{a[calcDoc(x.printed_status,x.dealer_center_status)]++;return a},{ok:0,pending:0,critical:0})}"
+          new = "function calcDoc(p,d){p=String(p||'pending').toLowerCase();d=String(d||'pending').toLowerCase();if(p==='missing'||d==='missing')return'critical';if(['pending','pendente'].includes(p)||['pending','pendente'].includes(d))return'pending';if(p==='waived'||d==='waived')return'waived';if(p==='na'||d==='na')return'na';if(p==='ok'&&d==='ok')return'ok';return'pending'}function nonBlockingDocStatus(s){return['ok','na','waived'].includes(String(s||'').toLowerCase())}function docSummary(d){return d.reduce((a,x)=>{const s=calcDoc(x.printed_status,x.dealer_center_status);a[nonBlockingDocStatus(s)?'ok':s==='critical'?'critical':'pending']++;return a},{ok:0,pending:0,critical:0})}"
+          if old not in html:
+              raise SystemExit('calcDoc/docSummary target not found')
+          html = html.replace(old, new, 1)
+
+          html_path.write_text(html, encoding='utf-8')
+          PY
+      - name: Validate syntax
+        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('Code.gs','utf8')); new Function(fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1]); console.log('Code.gs and index.html OK')"
+      - name: Commit patched files
+        run: |
+          git config user.name codex
+          git config user.email codex@openai.com
+          git add Code.gs index.html
+          git commit -m "Etapa 17 - Corrige Home Dashboard e GPS visual"
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/codex-etapa17-dashboard-gps.yml
+          git add .github/workflows/codex-etapa17-dashboard-gps.yml
+          git commit --amend --no-edit
+      - name: Push final commit
+        run: git push
