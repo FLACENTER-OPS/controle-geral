@@ -1,0 +1,63 @@
+name: Codex Fix Document Nonblocking Metrics
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-fix-document-nonblocking-metrics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch Code.gs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('Code.gs')
+          text = path.read_text(encoding='utf-8')
+
+          old = "function countDocumentStatuses(docs){return docs.reduce((a,d)=>{a[calculateDocumentStatus(d.printed_status,d.dealer_center_status)]++;return a},{ok:0,pending:0,critical:0})}"
+          new = "function countDocumentStatuses(docs){return docs.reduce((a,d)=>{const s=calculateDocumentStatus(d.printed_status,d.dealer_center_status);a[isNonBlockingDocumentValue(s)?'ok':s==='critical'?'critical':'pending']++;return a},{ok:0,pending:0,critical:0})}"
+          if old not in text:
+              raise SystemExit('countDocumentStatuses target not found')
+          text = text.replace(old, new, 1)
+
+          old = "function countPendingDocuments(docs){return docs.reduce((a,d)=>{if(calculateDocumentStatus(d.printed_status,d.dealer_center_status)!=='ok')a[d.document_name||'Documento']=(a[d.document_name||'Documento']||0)+1;return a},{})}"
+          new = "function countPendingDocuments(docs){return docs.reduce((a,d)=>{const s=calculateDocumentStatus(d.printed_status,d.dealer_center_status);if(!isNonBlockingDocumentValue(s))a[d.document_name||'Documento']=(a[d.document_name||'Documento']||0)+1;return a},{})}"
+          if old not in text:
+              raise SystemExit('countPendingDocuments target not found')
+          text = text.replace(old, new, 1)
+
+          old = "function hasCriticalDocument(docs){return docs.some(d=>calculateDocumentStatus(d.printed_status,d.dealer_center_status)==='critical'||val(d.status)==='critical')}"
+          new = "function hasCriticalDocument(docs){return docs.some(d=>{const s=calculateDocumentStatus(d.printed_status,d.dealer_center_status||d.dealercenter_status);return s==='critical'||val(d.status)==='critical'&&!isNonBlockingDocumentValue(s)})}"
+          if old not in text:
+              raise SystemExit('hasCriticalDocument target not found')
+          text = text.replace(old, new, 1)
+
+          old = "function isNonBlockingDocumentValue(v){return['ok','na','waived'].includes(val(v))}function calculateDealDocumentStatus(docs){if(!docs.length)return'';return docs.every(d=>isNonBlockingDocumentValue(d.printed_status)&&isNonBlockingDocumentValue(d.dealer_center_status)&&['ok','complete','na','waived'].includes(val(d.status)))?'complete':'pending'}"
+          if old not in text:
+              raise SystemExit('calculateDealDocumentStatus nonblocking target not found')
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate Apps Script syntax
+        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('Code.gs','utf8')); new Function(fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1]); console.log('Code.gs and index.html OK')"
+      - name: Commit patched files
+        run: |
+          git config user.name codex
+          git config user.email codex@openai.com
+          git add Code.gs
+          git commit -m "Etapa 16 - Alinha metricas de documentos dispensados"
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/codex-fix-document-nonblocking-metrics.yml
+          git add .github/workflows/codex-fix-document-nonblocking-metrics.yml
+          git commit --amend --no-edit
+      - name: Push final commit
+        run: git push
