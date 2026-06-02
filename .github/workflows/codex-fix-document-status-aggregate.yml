@@ -1,0 +1,52 @@
+name: Codex Fix Document Status Aggregate
+
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-fix-document-status-aggregate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Patch Code.gs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('Code.gs')
+          text = path.read_text(encoding='utf-8')
+
+          old = "function calculateDocumentStatus(p,d){p=val(p||'pending');d=val(d||'pending');if(p==='missing'||d==='missing')return'critical';if(p==='ok'&&d==='ok')return'ok';return'pending'}"
+          new = "function calculateDocumentStatus(p,d){p=val(p||'pending');d=val(d||'pending');if(p==='missing'||d==='missing')return'critical';if(['pending','pendente'].includes(p)||['pending','pendente'].includes(d))return'pending';if(p==='waived'||d==='waived')return'waived';if(p==='na'||d==='na')return'na';if(p==='ok'&&d==='ok')return'ok';return'pending'}"
+          if old not in text:
+              raise SystemExit('old calculateDocumentStatus not found')
+          text = text.replace(old, new, 1)
+
+          old2 = "function calculateDealDocumentStatus(docs){if(!docs.length)return'';return docs.every(d=>val(d.printed_status)==='ok'&&val(d.dealer_center_status)==='ok'&&['ok','complete'].includes(val(d.status)))?'complete':'pending'}"
+          new2 = "function isNonBlockingDocumentValue(v){return['ok','na','waived'].includes(val(v))}function calculateDealDocumentStatus(docs){if(!docs.length)return'';return docs.every(d=>isNonBlockingDocumentValue(d.printed_status)&&isNonBlockingDocumentValue(d.dealer_center_status)&&['ok','complete','na','waived'].includes(val(d.status)))?'complete':'pending'}"
+          if old2 in text:
+              text = text.replace(old2, new2, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+      - name: Validate Apps Script syntax
+        run: node -e "const fs=require('fs'); new Function(fs.readFileSync('Code.gs','utf8')); new Function(fs.readFileSync('index.html','utf8').match(/<script>([\s\S]*)<\/script>/)[1]); console.log('Code.gs and index.html OK')"
+      - name: Commit patched files
+        run: |
+          git config user.name codex
+          git config user.email codex@openai.com
+          git add Code.gs
+          git commit -m "Etapa 16 - Corrige status agregado de documentos"
+      - name: Remove temporary workflow
+        run: |
+          rm .github/workflows/codex-fix-document-status-aggregate.yml
+          git add .github/workflows/codex-fix-document-status-aggregate.yml
+          git commit --amend --no-edit
+      - name: Push final commit
+        run: git push
